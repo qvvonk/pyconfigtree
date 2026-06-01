@@ -1,6 +1,9 @@
 from collections.abc import Generator, Iterable
-from typing import Optional, Union
+from typing import Optional, Union, TypeVar
 from types import MappingProxyType
+
+
+T = TypeVar('T', bound='Node')
 
 
 class Node:
@@ -9,6 +12,37 @@ class Node:
         self._parent: Optional['Node'] = None
         self._subnodes: dict[str, Node] = {}
         self._subnodes_proxy = MappingProxyType(self._subnodes)
+
+    def _attach_node(self, node: T) -> T:
+        if node.id in self.subnodes:
+            raise ValueError(f'Node {self.path} already has subnode with id {node.id}')
+
+        node.parent = self
+        self._subnodes[node.id] = node
+        return node
+
+    async def attach_node(self, node: T, run_hook: bool = True) -> T:
+        node = self._attach_node(node)
+        if run_hook:
+            # run hook
+            ...
+        return node
+
+    def _detach_node(self, node: Union[T, str]) -> Union[T, 'Node']:
+        node_id = node if isinstance(node, str) else node.id
+        if node_id not in self.subnodes:
+            raise KeyError(f'Node {self.path} has no subnode with id {node_id}.')
+
+        node.parent = None
+        del self._subnodes[node_id]
+        return node
+
+    async def detach_node(self, node: Union[T, str], run_hook: bool = True) -> Union[T, 'Node']:
+        node = self._detach_node(node)
+        if run_hook:
+            # run hook
+            ...
+        return node
 
     @property
     def id(self) -> str:
