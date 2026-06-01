@@ -1,6 +1,5 @@
 from .base import Node
-from typing import Union, overload, Literal, TypeVar
-from collections.abc import Awaitable
+from typing import overload, TypeVar
 
 
 T = TypeVar('T', bound=Node)
