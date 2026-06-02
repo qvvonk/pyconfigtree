@@ -14,12 +14,6 @@ class Parameter(Node, Generic[T]):
     def value(self) -> T:
         return self._value
 
-    def _attach_node(self, node):
-        raise RuntimeError('Parameter cannot contain subnodes.')
-
-    async def attach_node(self, node: T, run_hook: bool = True) -> T:
-        raise RuntimeError('Parameter cannot contain subnodes.')
-
 
 class MutableParameter(Node):
     ...

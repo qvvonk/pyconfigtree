@@ -7,6 +7,8 @@ T = TypeVar('T', bound='Node')
 
 
 class Node:
+    _allow_children: bool = True
+
     def __init__(self, node_id: str):
         self._id: str = node_id
         self._parent: Optional['Node'] = None
@@ -14,6 +16,8 @@ class Node:
         self._subnodes_proxy = MappingProxyType(self._subnodes)
 
     def _attach_node(self, node: T) -> T:
+        if not self._allow_children:
+            raise TypeError('This type of node cannot contain subnodes.')
         if node.id in self.subnodes:
             raise ValueError(f'Node {self.path} already has subnode with id {node.id}')
 
@@ -33,8 +37,8 @@ class Node:
         if node_id not in self.subnodes:
             raise KeyError(f'Node {self.path} has no subnode with id {node_id}.')
 
+        node = self._subnodes.pop(node_id)
         node.parent = None
-        del self._subnodes[node_id]
         return node
 
     async def detach_node(self, node: Union[T, str], run_hook: bool = True) -> Union[T, 'Node']:
