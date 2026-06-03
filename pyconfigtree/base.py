@@ -16,7 +16,8 @@ class Node:
         self._subnodes_proxy = MappingProxyType(self._subnodes)
 
     def _attach_node(self, node: T) -> T:
-        node.parent = self
+        self.check_can_attach_node(node)
+        node._parent = self
         self._subnodes[node.id] = node
         return node
 
@@ -33,7 +34,7 @@ class Node:
             raise KeyError(f'Node {self.path} has no subnode with id {node_id}.')
 
         node = self._subnodes.pop(node_id)
-        node.parent = None
+        node._parent = None
         return node
 
     async def detach_node(self, node: Union[T, str], run_hook: bool = True) -> Union[T, 'Node']:
@@ -50,10 +51,6 @@ class Node:
     @property
     def parent(self) -> Optional['Node']:
         return self._parent
-
-    @parent.setter
-    def parent(self, value: Optional['Node']) -> None:
-        self._parent = value  # todo: checks
 
     @property
     def subnodes(self) -> MappingProxyType[str, 'Node']:
@@ -81,14 +78,16 @@ class Node:
             raise TypeError(f'Node of type {type(self)} cannot contain subnodes.')
 
         node.check_can_be_attached()
+
         if node is self:
             raise ValueError('Node cannot be attached to itself.')
 
+        if node.id in self.subnodes:
+            raise ValueError(f'Node {self.path} already contains a subnodee with id {node.id}.')
+
         for i in node.chain_to_tails():
             if i is self:
-                raise ValueError('Node loop.')  # todo
-
-
+                raise ValueError(f'Node loop.')  # todo
         return None
 
     def chain_to_root(self) -> Generator['Node', None, None]:
