@@ -16,11 +16,6 @@ class Node:
         self._subnodes_proxy = MappingProxyType(self._subnodes)
 
     def _attach_node(self, node: T) -> T:
-        if not self._allow_children:
-            raise TypeError('This type of node cannot contain subnodes.')
-        if node.id in self.subnodes:
-            raise ValueError(f'Node {self.path} already has subnode with id {node.id}')
-
         node.parent = self
         self._subnodes[node.id] = node
         return node
@@ -76,6 +71,25 @@ class Node:
         path = [i.id for i in self.chain_to_root()]
         path.reverse()
         return tuple(path)
+
+    def check_can_be_attached(self) -> None:
+        if self._parent is not None:
+            raise RuntimeError(f'Node {self.path} already has a parent and cannot be attached to another node.')
+
+    def check_can_attach_node(self, node: 'Node') -> None:
+        if not self._allow_children:
+            raise TypeError(f'Node of type {type(self)} cannot contain subnodes.')
+
+        node.check_can_be_attached()
+        if node is self:
+            raise ValueError('Node cannot be attached to itself.')
+
+        for i in node.chain_to_tails():
+            if i is self:
+                raise ValueError('Node loop.')  # todo
+
+
+        return None
 
     def chain_to_root(self) -> Generator['Node', None, None]:
         node = self
