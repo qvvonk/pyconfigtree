@@ -9,8 +9,15 @@ T = TypeVar('T', bound='Node')
 class Node:
     _allow_children: bool = True
 
-    def __init__(self, node_id: str):
+    def __init__(
+        self,
+        node_id: str,
+        name: str = '',
+        description: str = '',
+    ):
         self._id: str = node_id
+        self._name = name
+        self._description = description
         self._parent: Optional['Node'] = None
         self._subnodes: dict[str, Node] = {}
         self._subnodes_proxy = MappingProxyType(self._subnodes)
@@ -47,6 +54,14 @@ class Node:
     @property
     def id(self) -> str:
         return self._id
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def description(self) -> str:
+        return self._description
 
     @property
     def parent(self) -> Optional['Node']:
