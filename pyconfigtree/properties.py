@@ -20,3 +20,11 @@ class Properties(Node):
     @property
     def source(self) -> Optional[ConfigSource]:
         return self._source
+
+    @property
+    def inherited_source(self) -> Optional[ConfigSource]:
+        if self.source is not None:
+            return self._source
+        if self.parent is not None:
+            return self.parent.inherited_source
+        return None
