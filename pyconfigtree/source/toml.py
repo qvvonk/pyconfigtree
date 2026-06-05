@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 from .base import ConfigSource
 from pathlib import Path
@@ -7,7 +7,7 @@ import tomli_w
 
 
 class TOMLSource(ConfigSource):
-    def __init__(self, path: str | Path, encoding: str = 'utf-8') -> None:
+    def __init__(self, path: Union[str, Path], encoding: str = 'utf-8') -> None:
         self._path =  Path(path)
         self._encoding = encoding
 
@@ -28,3 +28,10 @@ class TOMLSource(ConfigSource):
     @property
     def encoding(self) -> str:
         return self._encoding
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, TOMLSource):
+            return self.path == other.path
+        elif isinstance(other, Union[str, Path]):
+            return self.path == Path(other)
+        return False
