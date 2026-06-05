@@ -3,6 +3,7 @@ from typing import Any
 from .base import ConfigSource
 from pathlib import Path
 import tomllib
+import tomli_w
 
 
 class TOMLSource(ConfigSource):
@@ -15,8 +16,10 @@ class TOMLSource(ConfigSource):
            data = tomllib.load(f)
        return data
 
-    async def save(self, data: dict[str, Any]):
-        ...
+    async def save(self, data: dict[str, Any]) -> None:
+        with open(self._path, 'w', encoding='utf-8') as f:
+            f.write(tomli_w.dumps(data, multiline_strings=True, indent=4))
+        return
 
     @property
     def path(self) -> Path:
