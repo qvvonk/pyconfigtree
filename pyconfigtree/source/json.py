@@ -30,6 +30,6 @@ class JSONSource(ConfigSource):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, JSONSource):
             return self.path == other.path
-        elif isinstance(other, Union[str, Path]):
+        elif isinstance(other, (str, Path)):
             return self.path == Path(other)
         return False
