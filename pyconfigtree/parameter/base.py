@@ -7,6 +7,7 @@ from asyncio import Lock
 from ..source.base import NodeInfo, NodeType, ALLOWED_TYPES
 
 T = TypeVar('T')
+S = TypeVar('S')
 UNSET = object()
 
 
@@ -28,13 +29,14 @@ class Parameter(Node, Generic[T]):
 
 class MutableParameter(Parameter[T], ABC, Generic[T]):
     def __init__(
-        self,
+        self: S,
         node_id: str,
         name: str = '',
         description: str = '',
         value: T = UNSET,
         default_value: T = UNSET,
         default_factory: Callable[[], T] = UNSET,
+        validator: Callable[[S, T], None] = UNSET
     ) -> None:
         if default_value is UNSET and default_factory is UNSET:
             raise ValueError('Default value or default factory must be set.')
@@ -42,6 +44,7 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         self._default_factory = default_factory
         self._default_value = default_value
         self._changing_lock = Lock()
+        self._validator = validator
 
         super().__init__(
             node_id=node_id,
@@ -69,16 +72,16 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         self,
         value: Any,
         *,
-        skip_converter: bool = False,
+        skip_deserializer: bool = False,
         skip_validator: bool = False,
         skip_hook: bool = False,
         save: bool = True,
     ) -> None:
         async with self._changing_lock:
-            if not skip_converter:
-                ...
+            if not skip_deserializer:
+                value = self.deserialize(value)
             if not skip_validator:
-                ...
+                self.validate(value)
 
             self._value = value
             if save:
@@ -91,4 +94,9 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
     def serialize(self) -> ALLOWED_TYPES: ...
 
     @abstractmethod
-    def deserialize(self, value: ALLOWED_TYPES) -> T: ...
+    def deserialize(self, value: Any) -> T: ...
+
+    def validate(self, value: T) -> None:
+        if not self._validator:
+            return
+        self._validator(self, value)
