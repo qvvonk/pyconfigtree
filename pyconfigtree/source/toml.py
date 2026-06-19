@@ -1,6 +1,6 @@
 from typing import Any, Union
 
-from .base import ConfigSource
+from .base import ConfigSource, NodeInfo, NodeType
 from pathlib import Path
 import tomllib
 import tomli_w
@@ -16,10 +16,16 @@ class TOMLSource(ConfigSource):
            data = tomllib.load(f)
        return data
 
-    async def save(self, data: dict[str, Any]) -> None:
+    async def save(self, data: NodeInfo) -> None:
+        dicted = self.node_info_to_dict(data)
         with open(self._path, 'w', encoding='utf-8') as f:
-            f.write(tomli_w.dumps(data, multiline_strings=True, indent=4))
+            f.write(tomli_w.dumps(dicted, multiline_strings=True, indent=4))
         return
+
+    def node_info_to_dict(self, node: NodeInfo) -> dict[str, Any]:
+        if node.type is NodeType.LEAF:
+            return node.value
+        return {k: self.node_info_to_dict(v) for k, v in node.subnodes.items()}
 
     @property
     def path(self) -> Path:

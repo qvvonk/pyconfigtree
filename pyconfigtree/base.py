@@ -170,3 +170,14 @@ class Node:
                 return False
 
         return path[:len(self_path)] == self_path
+
+    async def save(self, same_source_only: bool = True) -> None:
+        if self.source is None:
+            if not self.inherited_source:
+                raise RuntimeError(f'Cannot save node {self.path}: source not specified.')
+            for i in self.chain_to_root():
+                if i.source is not None:
+                    return await i.save(same_source_only=same_source_only)
+
+        node_info = self.get_node_info()
+        await self.source.save(data=node_info)
