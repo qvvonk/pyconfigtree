@@ -1,6 +1,7 @@
 from collections.abc import Generator, Iterable
 from typing import Optional, Union, TypeVar
 from types import MappingProxyType
+from .source import ConfigSource
 
 
 T = TypeVar('T', bound='Node')
@@ -14,6 +15,7 @@ class Node:
         node_id: str,
         name: str = '',
         description: str = '',
+        source: Optional[ConfigSource] = None,
     ):
         self._id: str = node_id
         self._name = name
@@ -21,6 +23,7 @@ class Node:
         self._parent: Optional['Node'] = None
         self._subnodes: dict[str, Node] = {}
         self._subnodes_proxy = MappingProxyType(self._subnodes)
+        self._source = source
 
     def _attach_node(self, node: T) -> T:
         self.check_can_attach_node(node)
@@ -83,6 +86,18 @@ class Node:
         path = [i.id for i in self.chain_to_root()]
         path.reverse()
         return tuple(path)
+
+    @property
+    def source(self) -> Optional[ConfigSource]:
+        return self._source
+
+    @property
+    def inherited_source(self) -> Optional[ConfigSource]:
+        if self.source is not None:
+            return self._source
+        if self.parent is not None:
+            return self.parent.inherited_source
+        return None
 
     def check_can_be_attached(self) -> None:
         if self._parent is not None:

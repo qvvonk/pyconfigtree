@@ -6,6 +6,7 @@ from collections.abc import Callable
 T = TypeVar('T')
 UNSET = object()
 
+
 class Parameter(Node, Generic[T]):
     def __init__(
         self,
