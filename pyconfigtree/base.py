@@ -2,7 +2,7 @@ from collections.abc import Generator, Iterable
 from typing import Optional, Union, TypeVar
 from types import MappingProxyType
 from .source import ConfigSource
-
+from .source.base import NodeInfo, NodeType
 
 T = TypeVar('T', bound='Node')
 
@@ -98,6 +98,20 @@ class Node:
         if self.parent is not None:
             return self.parent.inherited_source
         return None
+
+    def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
+        return NodeInfo(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            type=NodeType.CONTAINER,
+            subnodes={
+                k: i.get_node_info(same_source_only=same_source_only)
+                for k, i in self.subnodes.items()
+                if (same_source_only and self.inherited_source == i.inherited_source)
+                or not same_source_only
+            }
+        )
 
     def check_can_be_attached(self) -> None:
         if self._parent is not None:

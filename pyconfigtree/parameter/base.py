@@ -2,6 +2,7 @@ from ..base import Node
 from typing import Any, Generic, TypeVar
 from collections.abc import Callable
 
+from ..source.base import NodeInfo, NodeType
 
 T = TypeVar('T')
 UNSET = object()
@@ -51,3 +52,12 @@ class MutableParameter(Parameter[T], Generic[T]):
         if self._default_factory is not UNSET:
             return self._default_factory()
         return self._default_value
+
+    def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
+        return NodeInfo(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            type=NodeType.LEAF,
+            value=self.value
+        )

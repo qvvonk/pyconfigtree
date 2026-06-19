@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Union, TypeAlias
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 
@@ -30,10 +30,11 @@ class NodeType(Enum):
 
 @dataclass
 class NodeInfo:
+    id: str
     name: str
     description: str
     type: NodeType
-    subnodes: dict[str, 'NodeInfo']
+    subnodes: dict[str, 'NodeInfo'] = field(default_factory=dict)
     value: ALLOWED_TYPES | None = None
 
     def __post_init__(self):
