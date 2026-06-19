@@ -36,7 +36,9 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         value: T = UNSET,
         default_value: T = UNSET,
         default_factory: Callable[[], T] = UNSET,
-        validator: Callable[[S, T], None] = UNSET
+        validator: Callable[[S, T], None] = None,
+        serializer: Callable[[S], ALLOWED_TYPES] = None,
+        deserializer: Callable[[Any], T] = None,
     ) -> None:
         if default_value is UNSET and default_factory is UNSET:
             raise ValueError('Default value or default factory must be set.')
@@ -45,6 +47,8 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         self._default_value = default_value
         self._changing_lock = Lock()
         self._validator = validator
+        self._serializer = serializer
+        self._deserializer = deserializer
 
         super().__init__(
             node_id=node_id,
@@ -58,6 +62,18 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         if self._default_factory is not UNSET:
             return self._default_factory()
         return self._default_value
+
+    @property
+    def serializer(self) -> Callable[[S], ALLOWED_TYPES] | None:
+        return self._serializer
+
+    @property
+    def deserializer(self) -> Callable[[Any], T] | None:
+        return self._deserializer
+
+    @property
+    def validator(self) -> Callable[[S, T], None] | None:
+        return self._validator
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
         return NodeInfo(
@@ -90,11 +106,9 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         if not skip_hook:
             ...
 
-    @abstractmethod
-    def serialize(self) -> ALLOWED_TYPES: ...
-
-    @abstractmethod
-    def deserialize(self, value: Any) -> T: ...
+    def serialize(self) -> ALLOWED_TYPES:
+        if self._serializer:
+            return self._serializer(self._value)
 
     def validate(self, value: T) -> None:
         if not self._validator:
