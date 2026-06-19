@@ -106,11 +106,6 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         if not skip_hook:
             ...
 
-    def serialize(self) -> ALLOWED_TYPES:
-        if self._serializer:
-            return self._serializer(self._value)
+    def serialize(self) -> ALLOWED_TYPES: ...
 
-    def validate(self, value: T) -> None:
-        if not self._validator:
-            return
-        self._validator(self, value)
+    def validate(self, value: T) -> None: ...
