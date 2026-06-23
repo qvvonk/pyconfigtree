@@ -121,8 +121,7 @@ class Node:
     async def attach_node(self, node: T, run_hook: bool = True) -> T:
         node = self._attach_node(node)
         if run_hook:
-            # run hook
-            ...
+            await self.run_hook(BaseHookTypes.ON_NODE_ATTACHED, node, self)
         return node
 
     def _detach_node(self, node: Union[T, str]) -> Union[T, 'Node']:
@@ -137,8 +136,7 @@ class Node:
     async def detach_node(self, node: Union[T, str], run_hook: bool = True) -> Union[T, 'Node']:
         node = self._detach_node(node)
         if run_hook:
-            # run hook
-            ...
+            await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node, self)
         return node
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:

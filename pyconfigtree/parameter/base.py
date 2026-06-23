@@ -1,14 +1,24 @@
 from ..base import Node
-from typing import Any, Generic, TypeVar
-from collections.abc import Callable
+from typing import Any, Generic, TypeVar, TypeAlias, Optional
+from collections.abc import Callable, Awaitable
 from abc import ABC, abstractmethod
+from enum import Enum, auto
 from asyncio import Lock
 
 from ..source.base import NodeInfo, NodeType, ALLOWED_TYPES
 
+
 T = TypeVar('T')
 S = TypeVar('S')
 UNSET = object()
+
+
+ON_PARAMETER_VALUE_CHANGED_HOOK: TypeAlias = Callable[['MutableParameter[Any]'], Awaitable[Any]]
+
+
+class ParameterHookTypes(Enum):
+    PARAMETER_VALUE_CHANGED = auto()
+
 
 
 class Parameter(Node, Generic[T]):
@@ -39,6 +49,7 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         validator: Callable[[S, T], None] = None,
         serializer: Callable[[S], ALLOWED_TYPES] = None,
         deserializer: Callable[[Any], T] = None,
+        on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
     ) -> None:
         if default_value is UNSET and default_factory is UNSET:
             raise ValueError('Default value or default factory must be set.')
@@ -49,6 +60,7 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         self._validator = validator
         self._serializer = serializer
         self._deserializer = deserializer
+        self.on_value_changed_hook = on_value_changed_hook
 
         super().__init__(
             node_id=node_id,
@@ -74,6 +86,14 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
     @property
     def validator(self) -> Callable[[S, T], None] | None:
         return self._validator
+
+    @property
+    def on_value_changed_hook(self) -> Optional[ON_PARAMETER_VALUE_CHANGED_HOOK]:
+        return self.hooks.get(ParameterHookTypes.PARAMETER_VALUE_CHANGED)
+
+    @on_value_changed_hook.setter
+    def on_value_changed_hook(self, hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK]) -> None:
+        self._hooks[ParameterHookTypes.PARAMETER_VALUE_CHANGED] = hook
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
         return NodeInfo(
@@ -104,4 +124,4 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
                 ...
 
         if not skip_hook:
-            ...
+            await self.run_hook(ParameterHookTypes.PARAMETER_VALUE_CHANGED, self)
