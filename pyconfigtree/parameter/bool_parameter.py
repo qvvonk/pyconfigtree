@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from types import EllipsisType
-from collections.abc import Callable, Iterable, Awaitable
+from collections.abc import Callable
 
 from .base import MutableParameter, UNSET
 
