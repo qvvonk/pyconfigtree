@@ -3,6 +3,7 @@ from typing import Optional, Union, TypeVar, Any, TypeAlias
 from types import MappingProxyType
 from .source import ConfigSource
 from .source.base import NodeInfo, NodeType
+from .exceptions import NoSourceError
 from enum import Enum, auto
 
 
@@ -214,13 +215,27 @@ class Node:
     async def save(self, same_source_only: bool = True) -> None:
         if self.source is None:
             if not self.inherited_source:
-                raise RuntimeError(f'Cannot save node {self.path}: source not specified.')
+                raise NoSourceError(f'Cannot save node {self.path}: source not specified.')
             for i in self.chain_to_root():
                 if i.source is not None:
                     return await i.save(same_source_only=same_source_only)
 
         node_info = self.get_node_info()
-        await self.source.save(data=node_info)
+        return await self.source.save(data=node_info)
+
+    async def load(self) -> None:
+        if self.source is None:
+            raise NoSourceError(f'Cannot load node {self.path}: source not specified.')
+
+        data = await self.source.load()
+        await self.load_from_dict(data)
+
+    async def load_from_dict(self, data_dict: dict[str, Any]) -> None:
+        for k, data in data_dict.items():
+            if k not in self.subnodes:
+                continue
+            node = self.subnodes[k]
+            await node.load_from_dict(data_dict[k])
 
     async def run_hook(self, hook_identifier: Any, *args, **kwargs) -> Any:
         hook = self.hooks.get(hook_identifier)

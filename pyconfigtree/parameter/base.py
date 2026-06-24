@@ -59,6 +59,10 @@ class Parameter(Node, Generic[T]):
     def value(self) -> T:
         return self._value
 
+    async def load_from_dict(self, data_dict: Any) -> None:
+        # Parameter is immutable and its value cannot be set.
+        return
+
 
 class MutableParameter(Parameter[T], ABC, Generic[T]):
     def __init__(
@@ -128,6 +132,9 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
             type=NodeType.LEAF,
             value=self.serialize()
         )
+
+    async def load_from_dict(self, data_dict: Any) -> None:
+        await self.set_value(data_dict, save=False, run_hook=False)
 
     async def set_value(
         self,

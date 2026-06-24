@@ -12,13 +12,12 @@ class TOMLSource(ConfigSource):
         self._encoding = encoding
 
     async def load(self) -> dict[str, Any]:
-       with open(self._path, 'r', encoding='utf-8') as f:
+       with open(self._path, 'rb') as f:
            data = tomllib.load(f)
        return data
 
     async def save(self, data: NodeInfo) -> None:
         dicted = self.node_info_to_dict(data)
-        print(dicted)
         with open(self._path, 'w', encoding='utf-8') as f:
             f.write(tomli_w.dumps(dicted, multiline_strings=True, indent=4))
         return
