@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+
+__all__ = [
+    'bool_serializer',
+    'bool_deserializer',
+    'BoolParameter',
+]
+
+
 from typing import Any, Optional
 from collections.abc import Callable
 
@@ -52,9 +60,6 @@ class BoolParameter(MutableParameter[bool]):
 
     async def next_value(self, save: bool = True, run_hook: bool = True) -> bool:
         await self.toggle(save=save, run_hook=run_hook)
-        return self.value
-
-    def __bool__(self) -> bool:
         return self.value
 
     def deserialize(self, value: Any) -> bool:
