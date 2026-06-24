@@ -1,7 +1,18 @@
+__all__ = [
+    'ParameterHookTypes',
+    'Serializer',
+    'Deserializer',
+    'Validator',
+    'Parameter',
+    'MutableParameter',
+    'UNSET',
+    'ON_PARAMETER_VALUE_CHANGED_HOOK'
+]
+
 from ..base import Node
-from typing import Any, Generic, TypeVar, TypeAlias, Optional
+from typing import Any, Generic, TypeVar, TypeAlias, Optional, Protocol
 from collections.abc import Callable, Awaitable
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import Enum, auto
 from asyncio import Lock
 
@@ -18,6 +29,18 @@ ON_PARAMETER_VALUE_CHANGED_HOOK: TypeAlias = Callable[['MutableParameter[Any]'],
 
 class ParameterHookTypes(Enum):
     PARAMETER_VALUE_CHANGED = auto()
+
+
+class Serializer(Protocol[T]):
+    def __call__(self, value: T) -> ALLOWED_TYPES: ...
+
+
+class Deserializer(Protocol[T]):
+    def __call__(self, value: ALLOWED_TYPES) -> T: ...
+
+
+class Validator(Protocol[S, T]):
+    async def __call__(self, node: S, value: T) -> None: ...
 
 
 
@@ -40,15 +63,16 @@ class Parameter(Node, Generic[T]):
 class MutableParameter(Parameter[T], ABC, Generic[T]):
     def __init__(
         self: S,
+        *,
         node_id: str,
         name: str = '',
         description: str = '',
         value: T = UNSET,
         default_value: T = UNSET,
         default_factory: Callable[[], T] = UNSET,
-        validator: Callable[[S, T], None] = None,
-        serializer: Callable[[S], ALLOWED_TYPES] = None,
-        deserializer: Callable[[Any], T] = None,
+        validator: Optional[Validator[S, T]] = None,
+        serializer: Serializer[T],
+        deserializer: Deserializer[T],
         on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
     ) -> None:
         if default_value is UNSET and default_factory is UNSET:
@@ -76,15 +100,15 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         return self._default_value
 
     @property
-    def serializer(self) -> Callable[[S], ALLOWED_TYPES] | None:
+    def serializer(self) -> Serializer[T]:
         return self._serializer
 
     @property
-    def deserializer(self) -> Callable[[Any], T] | None:
+    def deserializer(self) -> Deserializer[T]:
         return self._deserializer
 
     @property
-    def validator(self) -> Callable[[S, T], None] | None:
+    def validator(self) -> Optional[Validator[S, T]]:
         return self._validator
 
     @property
@@ -110,18 +134,28 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         *,
         skip_deserializer: bool = True,
         skip_validator: bool = False,
-        skip_hook: bool = False,
+        run_hook: bool = True,
         save: bool = True,
     ) -> None:
         async with self._changing_lock:
             if not skip_deserializer:
                 value = self.deserialize(value)
             if not skip_validator:
-                self.validate(value)
+                await self.validate(value)
 
             self._value = value
             if save:
-                ...
+                await self.save()
 
-        if not skip_hook:
+        if run_hook:
             await self.run_hook(ParameterHookTypes.PARAMETER_VALUE_CHANGED, self)
+
+    def serialize(self) -> ALLOWED_TYPES:
+        return self._serializer(self.value)
+
+    def deserialize(self, value: Any) -> T:
+        return self.deserializer(value)
+
+    async def validate(self, value: T) -> None:
+        if self._validator:
+            await self.validator(self, value)
