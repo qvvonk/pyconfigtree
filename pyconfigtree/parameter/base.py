@@ -12,7 +12,6 @@ __all__ = [
 from ..base import Node
 from typing import Any, Generic, TypeVar, TypeAlias, Optional, Protocol
 from collections.abc import Callable, Awaitable
-from abc import ABC
 from enum import Enum, auto
 from asyncio import Lock
 
@@ -64,7 +63,7 @@ class Parameter(Node, Generic[T]):
         return
 
 
-class MutableParameter(Parameter[T], ABC, Generic[T]):
+class MutableParameter(Parameter[T], Generic[T]):
     def __init__(
         self: S,
         *,
