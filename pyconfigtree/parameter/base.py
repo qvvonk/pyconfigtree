@@ -84,7 +84,6 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
         self._validator = validator
         self._serializer = serializer
         self._deserializer = deserializer
-        self.on_value_changed_hook = on_value_changed_hook
 
         super().__init__(
             node_id=node_id,
@@ -92,6 +91,8 @@ class MutableParameter(Parameter[T], ABC, Generic[T]):
             name=name,
             description=description
         )
+
+        self.on_value_changed_hook = on_value_changed_hook
 
     @property
     def default_value(self) -> T:

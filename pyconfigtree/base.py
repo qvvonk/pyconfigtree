@@ -9,7 +9,7 @@ from enum import Enum, auto
 T = TypeVar('T', bound='Node')
 
 ON_NODE_ATTACHED_HOOK: TypeAlias = Callable[['Node', 'Node'], Awaitable[Any]]
-ON_NODE_DETACHED_HOOK: TypeAlias = Callable[['Node', 'Node', Awaitable[Any]]]
+ON_NODE_DETACHED_HOOK: TypeAlias = Callable[['Node', 'Node'], Awaitable[Any]]
 
 
 class BaseHookTypes(Enum):
