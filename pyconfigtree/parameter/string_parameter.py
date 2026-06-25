@@ -8,10 +8,9 @@ __all__ = [
 ]
 
 
-from typing import Any, Optional
-from collections.abc import Callable
+from typing import Any
 
-from .base import MutableParameter, UNSET, Validator, Serializer, Deserializer, ON_PARAMETER_VALUE_CHANGED_HOOK
+from .base import TypedParameter
 from pyconfigtree.exceptions import DeserializationError, ValidationError
 
 
@@ -23,31 +22,9 @@ def str_deserializer(value: Any) -> str:
     return str(value)
 
 
-class StringParameter(MutableParameter[str]):
-    def __init__(
-        self,
-        *,
-        node_id: str,
-        name: str = '',
-        description: str = '',
-        default_value: str = UNSET,
-        default_factory: Callable[[], str] = UNSET,
-        validator: Optional[Validator['StringParameter', str]] = None,
-        serializer: Serializer[str] | None = None,
-        deserializer: Deserializer[str] | None = None,
-        on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
-    ) -> None:
-        super().__init__(
-            node_id=node_id,
-            name=name,
-            description=description,
-            default_value=default_value,
-            default_factory=default_factory,
-            serializer=serializer if serializer is not None else str_serializer,
-            deserializer=deserializer if deserializer is not None else str_deserializer,
-            validator=validator,
-            on_value_changed_hook=on_value_changed_hook
-        )
+class StringParameter(TypedParameter[str]):
+    DEFAULT_SERIALIZER = str_serializer
+    DEFAULT_DESERIALIZER = str_deserializer
 
     def deserialize(self, value: Any) -> str:
         res = super().deserialize(value)

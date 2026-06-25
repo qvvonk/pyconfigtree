@@ -8,10 +8,9 @@ __all__ = [
 ]
 
 
-from typing import Any, Optional
-from collections.abc import Callable
+from typing import Any
 
-from .base import MutableParameter, UNSET, Validator, Serializer, Deserializer, ON_PARAMETER_VALUE_CHANGED_HOOK
+from .base import TypedParameter
 from pyconfigtree.exceptions import DeserializationError, ValidationError
 
 
@@ -23,31 +22,9 @@ def bool_deserializer(value: Any) -> bool:
     return bool(value)
 
 
-class BoolParameter(MutableParameter[bool]):
-    def __init__(
-        self,
-        *,
-        node_id: str,
-        name: str = '',
-        description: str = '',
-        default_value: bool = UNSET,
-        default_factory: Callable[[], bool] = UNSET,
-        validator: Optional[Validator['BoolParameter', bool]] = None,
-        serializer: Serializer[bool] | None = None,
-        deserializer: Deserializer[bool] | None = None,
-        on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
-    ) -> None:
-        super().__init__(
-            node_id=node_id,
-            name=name,
-            description=description,
-            default_value=default_value,
-            default_factory=default_factory,
-            serializer=serializer if serializer is not None else bool_serializer,
-            deserializer=deserializer if deserializer is not None else bool_deserializer,
-            validator=validator,
-            on_value_changed_hook=on_value_changed_hook
-        )
+class BoolParameter(TypedParameter[bool]):
+    DEFAULT_SERIALIZER = bool_serializer
+    DEFAULT_DESERIALIZER = bool_deserializer
 
     async def on(self, save: bool = True, run_hook: bool = True) -> None:
         await self.set_value(True, skip_deserializer=True, save=save, run_hook=run_hook)

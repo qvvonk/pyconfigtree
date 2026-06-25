@@ -8,10 +8,9 @@ __all__ = [
 ]
 
 
-from typing import Any, Optional
-from collections.abc import Callable
+from typing import Any
 
-from .base import MutableParameter, UNSET, Validator, Serializer, Deserializer, ON_PARAMETER_VALUE_CHANGED_HOOK
+from .base import TypedParameter
 from pyconfigtree.exceptions import DeserializationError, ValidationError
 
 
@@ -23,31 +22,9 @@ def int_deserializer(value: Any) -> int:
     return int(value)
 
 
-class IntParameter(MutableParameter[int]):
-    def __init__(
-        self,
-        *,
-        node_id: str,
-        name: str = '',
-        description: str = '',
-        default_value: int = UNSET,
-        default_factory: Callable[[], int] = UNSET,
-        validator: Optional[Validator['IntParameter', int]] = None,
-        serializer: Serializer[int] | None = None,
-        deserializer: Deserializer[int] | None = None,
-        on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
-    ) -> None:
-        super().__init__(
-            node_id=node_id,
-            name=name,
-            description=description,
-            default_value=default_value,
-            default_factory=default_factory,
-            serializer=serializer if serializer is not None else int_serializer,
-            deserializer=deserializer if deserializer is not None else int_deserializer,
-            validator=validator,
-            on_value_changed_hook=on_value_changed_hook
-        )
+class IntParameter(TypedParameter[int]):
+    DEFAULT_SERIALIZER = int_serializer
+    DEFAULT_DESERIALIZER = int_deserializer
 
     def deserialize(self, value: Any) -> int:
         res = super().deserialize(value)

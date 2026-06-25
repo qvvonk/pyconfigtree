@@ -5,12 +5,13 @@ __all__ = [
     'Validator',
     'Parameter',
     'MutableParameter',
+    'TypedParameter',
     'UNSET',
     'ON_PARAMETER_VALUE_CHANGED_HOOK'
 ]
 
 from ..base import Node
-from typing import Any, Generic, TypeVar, TypeAlias, Optional, Protocol
+from typing import Any, Generic, TypeVar, TypeAlias, Optional, Protocol, ClassVar
 from collections.abc import Callable, Awaitable
 from enum import Enum, auto
 from asyncio import Lock
@@ -166,3 +167,36 @@ class MutableParameter(Parameter[T], Generic[T]):
     async def validate(self, value: T) -> None:
         if self._validator:
             await self.validator(self, value)
+
+
+TS = TypeVar('TS')
+TT = TypeVar('TT')
+
+class TypedParameter(MutableParameter[TT], Generic[TT]):
+    DEFAULT_SERIALIZER: Serializer[TT]
+    DEFAULT_DESERIALIZER: Deserializer[TT]
+
+    def __init__(
+        self: TS,
+        *,
+        node_id: str,
+        name: str = '',
+        description: str = '',
+        default_value: TT = UNSET,
+        default_factory: Callable[[], TT] = UNSET,
+        validator: Optional[Validator[TS, TT]] = None,
+        serializer: Serializer[TT] | None = None,
+        deserializer: Deserializer[TT] | None = None,
+        on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
+    ) -> None:
+        super().__init__(
+            node_id=node_id,
+            name=name,
+            description=description,
+            default_value=default_value,
+            default_factory=default_factory,
+            serializer=serializer if serializer is not None else self.DEFAULT_SERIALIZER,
+            deserializer=deserializer if deserializer is not None else self.DEFAULT_DESERIALIZER,
+            validator=validator,
+            on_value_changed_hook=on_value_changed_hook
+        )
