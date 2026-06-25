@@ -11,7 +11,6 @@ __all__ = [
 from typing import Any
 
 from .base import TypedParameter
-from pyconfigtree.exceptions import DeserializationError, ValidationError
 
 
 def bool_serializer(value: bool) -> bool:
@@ -38,18 +37,3 @@ class BoolParameter(TypedParameter[bool]):
     async def next_value(self, save: bool = True, run_hook: bool = True) -> bool:
         await self.toggle(save=save, run_hook=run_hook)
         return self.value
-
-    def deserialize(self, value: Any) -> bool:
-        res = super().deserialize(value)
-        if not isinstance(res, bool):
-            raise DeserializationError(
-                f'Deserialized value must be an instance of bool, not {type(res)}.'
-            )
-        return res
-
-    async def validate(self, value: Any) -> None:
-        if not isinstance(value, bool):
-            raise ValidationError(
-                f'Value of `BoolParameter` must be an instance of bool, not {type(value)}.'
-            )
-        return await (super().validate(value))

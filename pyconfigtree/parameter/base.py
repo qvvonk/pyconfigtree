@@ -11,10 +11,11 @@ __all__ = [
 ]
 
 from ..base import Node
-from typing import Any, Generic, TypeVar, TypeAlias, Optional, Protocol, ClassVar
+from typing import Any, Generic, TypeVar, TypeAlias, Optional, Protocol, Type
 from collections.abc import Callable, Awaitable
 from enum import Enum, auto
 from asyncio import Lock
+from pyconfigtree.exceptions import DeserializationError, ValidationError
 
 from ..source.base import NodeInfo, NodeType, ALLOWED_TYPES
 
@@ -175,6 +176,7 @@ TT = TypeVar('TT')
 class TypedParameter(MutableParameter[TT], Generic[TT]):
     DEFAULT_SERIALIZER: Serializer[TT]
     DEFAULT_DESERIALIZER: Deserializer[TT]
+    VALUE_TYPE: Type[TT]
 
     def __init__(
         self: TS,
@@ -200,3 +202,20 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
             validator=validator,
             on_value_changed_hook=on_value_changed_hook
         )
+
+    def deserialize(self, value: Any) -> bool:
+        res = super().deserialize(value)
+        if not isinstance(res, self.VALUE_TYPE):
+            raise DeserializationError(
+                f'Deserialized value of `{self.__class__.__name__}` must be an instance of '
+                f'`{self.VALUE_TYPE.__name__}`, not `{type(res)}`.'
+            )
+        return res
+
+    async def validate(self, value: Any) -> None:
+        if not isinstance(value, bool):
+            raise ValidationError(
+                f'Value of `{self.__class__.__name__}` must be an instance of '
+                f'`{self.VALUE_TYPE.__name__}`, not `{type(value)}`.'
+            )
+        return await (super().validate(value))
