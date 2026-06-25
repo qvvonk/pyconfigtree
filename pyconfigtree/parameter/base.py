@@ -212,8 +212,8 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
             description=description,
             default_value=default_value,
             default_factory=default_factory,
-            serializer=serializer if serializer is not None else self.DEFAULT_SERIALIZER,
-            deserializer=deserializer if deserializer is not None else self.DEFAULT_DESERIALIZER,
+            serializer=serializer if serializer is not None else self._DEFAULT_SERIALIZER,
+            deserializer=deserializer if deserializer is not None else self._DEFAULT_DESERIALIZER,
             validator=validator,
             on_value_changed_hook=on_value_changed_hook
         )

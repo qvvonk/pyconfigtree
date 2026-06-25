@@ -22,6 +22,6 @@ def float_deserializer(value: Any) -> float:
 
 
 class FloatParameter(TypedParameter[float]):
-    _DEFAULT_SERIALIZER = float_serializer
-    _DEFAULT_DESERIALIZER = float_deserializer
+    _DEFAULT_SERIALIZER = staticmethod(float_serializer)
+    _DEFAULT_DESERIALIZER = staticmethod(float_deserializer)
     _VALUE_TYPE = float

@@ -22,6 +22,6 @@ def str_deserializer(value: Any) -> str:
 
 
 class StringParameter(TypedParameter[str]):
-    _DEFAULT_SERIALIZER = str_serializer
-    _DEFAULT_DESERIALIZER = str_deserializer
+    _DEFAULT_SERIALIZER = staticmethod(str_serializer)
+    _DEFAULT_DESERIALIZER = staticmethod(str_deserializer)
     _VALUE_TYPE = str
