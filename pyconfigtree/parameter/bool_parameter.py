@@ -22,9 +22,9 @@ def bool_deserializer(value: Any) -> bool:
 
 
 class BoolParameter(TypedParameter[bool]):
-    DEFAULT_SERIALIZER = bool_serializer
-    DEFAULT_DESERIALIZER = bool_deserializer
-    VALUE_TYPE = bool
+    _DEFAULT_SERIALIZER = bool_serializer
+    _DEFAULT_DESERIALIZER = bool_deserializer
+    _VALUE_TYPE = bool
 
     async def on(self, save: bool = True, run_hook: bool = True) -> None:
         await self.set_value(True, skip_deserializer=True, save=save, run_hook=run_hook)

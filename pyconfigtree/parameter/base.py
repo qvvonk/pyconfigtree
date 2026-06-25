@@ -175,10 +175,23 @@ class MutableParameter(Parameter[T], Generic[T]):
 TS = TypeVar('TS')
 TT = TypeVar('TT')
 
+
 class TypedParameter(MutableParameter[TT], Generic[TT]):
-    DEFAULT_SERIALIZER: Serializer[TT]
-    DEFAULT_DESERIALIZER: Deserializer[TT]
-    VALUE_TYPE: Type[TT]
+    _DEFAULT_SERIALIZER: Serializer[TT]
+    _DEFAULT_DESERIALIZER: Deserializer[TT]
+    _VALUE_TYPE: Type[TT]
+
+    def __init_subclass__(cls, **kwargs):
+        if cls is TypedParameter:
+            return
+
+        for i in [
+            '_DEFAULT_SERIALIZER',
+            '_DEFAULT_DESERIALIZER',
+            '_VALUE_TYPE',
+        ]:
+            if i not in cls.__dict__:
+                raise TypeError(f'`{cls.__name__}` must define `{i}`.')
 
     def __init__(
         self: TS,
@@ -207,17 +220,17 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
 
     def deserialize(self, value: Any) -> bool:
         res = super().deserialize(value)
-        if not isinstance(res, self.VALUE_TYPE):
+        if not isinstance(res, self._VALUE_TYPE):
             raise DeserializationError(
                 f'Deserialized value of `{self.__class__.__name__}` must be an instance of '
-                f'`{self.VALUE_TYPE.__name__}`, not `{type(res)}`.'
+                f'`{self._VALUE_TYPE.__name__}`, not `{type(res)}`.'
             )
         return res
 
     async def validate(self, value: Any) -> None:
-        if not isinstance(value, self.VALUE_TYPE):
+        if not isinstance(value, self._VALUE_TYPE):
             raise ValidationError(
                 f'Value of `{self.__class__.__name__}` must be an instance of '
-                f'`{self.VALUE_TYPE.__name__}`, not `{type(value)}`.'
+                f'`{self._VALUE_TYPE.__name__}`, not `{type(value)}`.'
             )
         return await (super().validate(value))

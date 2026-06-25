@@ -22,6 +22,6 @@ def int_deserializer(value: Any) -> int:
 
 
 class IntParameter(TypedParameter[int]):
-    DEFAULT_SERIALIZER = int_serializer
-    DEFAULT_DESERIALIZER = int_deserializer
-    VALUE_TYPE = int
+    _DEFAULT_SERIALIZER = int_serializer
+    _DEFAULT_DESERIALIZER = int_deserializer
+    _VALUE_TYPE = int
