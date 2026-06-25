@@ -24,3 +24,4 @@ def float_deserializer(value: Any) -> float:
 class FloatParameter(TypedParameter[float]):
     DEFAULT_SERIALIZER = float_serializer
     DEFAULT_DESERIALIZER = float_deserializer
+    VALUE_TYPE = float

@@ -215,7 +215,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
         return res
 
     async def validate(self, value: Any) -> None:
-        if not isinstance(value, bool):
+        if not isinstance(value, self.VALUE_TYPE):
             raise ValidationError(
                 f'Value of `{self.__class__.__name__}` must be an instance of '
                 f'`{self.VALUE_TYPE.__name__}`, not `{type(value)}`.'
