@@ -46,6 +46,8 @@ class Validator(Protocol[S, T]):
 
 
 class Parameter(Node, Generic[T]):
+    _allow_children = False
+
     def __init__(
         self,
         node_id: str,
