@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Union, TypeAlias
+from typing import Any, Union, TypeAlias, Optional
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
@@ -35,7 +35,7 @@ class NodeInfo:
     description: str
     type: NodeType
     subnodes: dict[str, 'NodeInfo'] = field(default_factory=dict)
-    value: ALLOWED_TYPES | None = None
+    value: Optional[ALLOWED_TYPES] = None
 
     def __post_init__(self):
         if self.type is NodeType.CONTAINER and self.value is not None:

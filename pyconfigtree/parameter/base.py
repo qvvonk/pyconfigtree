@@ -202,8 +202,8 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
         default_value: TT = UNSET,
         default_factory: Callable[[], TT] = UNSET,
         validator: Optional[Validator[TS, TT]] = None,
-        serializer: Serializer[TT] | None = None,
-        deserializer: Deserializer[TT] | None = None,
+        serializer: Optional[Serializer[TT]] = None,
+        deserializer: Optional[Deserializer[TT]] = None,
         on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
     ) -> None:
         super().__init__(
