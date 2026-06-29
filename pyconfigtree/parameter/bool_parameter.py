@@ -26,15 +26,33 @@ class BoolParameter(TypedParameter[bool]):
     _DEFAULT_DESERIALIZER = staticmethod(bool_deserializer)
     _VALUE_TYPE = bool
 
-    async def on(self, save: bool = True, run_hook: bool = True) -> None:
-        await self.set_value(True, skip_deserializer=True, save=save, run_hook=run_hook)
+    async def on(self, save: bool = True, run_hook: bool = True, validate: bool = True) -> None:
+        await self.set_value(
+            True,
+            deserialize=False,
+            validate=validate,
+            run_hook=run_hook,
+            save=save
+        )
 
-    async def off(self, save: bool = True, run_hook: bool = True) -> None:
-        await self.set_value(False, skip_deserializer=True, save=save, run_hook=run_hook)
+    async def off(self, save: bool = True, run_hook: bool = True, validate: bool = True) -> None:
+        await self.set_value(
+            False,
+            deserialize=False,
+            validate=validate,
+            run_hook=run_hook,
+            save=save
+        )
 
-    async def toggle(self, save: bool = True, run_hook: bool = True) -> None:
-        await self.set_value(not self.value, skip_deserializer=True, save=save, run_hook=run_hook)
+    async def toggle(self, save: bool = True, run_hook: bool = True, validate: bool = True) -> None:
+        await self.set_value(
+            not self.value,
+            deserialize=False,
+            validate=validate,
+            run_hook=run_hook,
+            save=save
+        )
 
-    async def next_value(self, save: bool = True, run_hook: bool = True) -> bool:
-        await self.toggle(save=save, run_hook=run_hook)
+    async def next_value(self, save: bool = True, run_hook: bool = True, validate: bool = True) -> bool:
+        await self.toggle(save=save, run_hook=run_hook, validate=validate)
         return self.value

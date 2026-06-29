@@ -11,8 +11,7 @@ __all__ = [
 ]
 
 from ..base import Node
-from typing import Any, Generic, TypeVar, TypeAlias, Optional, Protocol, Type
-from collections.abc import Callable, Awaitable
+from typing import Any, Generic, TypeVar, Optional, Protocol, Type, Callable, Awaitable, Dict
 from enum import Enum, auto
 from asyncio import Lock
 from pyconfigtree.exceptions import DeserializationError, ValidationError
@@ -25,7 +24,7 @@ S = TypeVar('S')
 UNSET = object()
 
 
-ON_PARAMETER_VALUE_CHANGED_HOOK: TypeAlias = Callable[['MutableParameter[Any]'], Awaitable[Any]]
+ON_PARAMETER_VALUE_CHANGED_HOOK = Callable[['MutableParameter[Any]'], Awaitable[Any]]
 
 
 class ParameterHookTypes(Enum):
@@ -62,7 +61,12 @@ class Parameter(Node, Generic[T]):
     def value(self) -> T:
         return self._value
 
-    async def load_from_dict(self, data_dict: Any) -> None:
+    async def load_from_dict(
+        self,
+        data_dict: Dict[str, Any],
+        validate: bool = True,
+        run_hook: bool = False
+    ) -> None:
         # Parameter is immutable and its value cannot be set.
         return
 

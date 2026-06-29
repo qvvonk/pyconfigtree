@@ -3,7 +3,9 @@ __all__ = [
     'ValidationError',
     'SerializationError',
     'DeserializationError',
-    'NoSourceError'
+    'NoSourceError',
+    'NodeLoopError',
+    'NodeDuplicateError'
 ]
 
 
@@ -20,3 +22,9 @@ class DeserializationError(PyConfigTreeError): ...
 
 
 class NoSourceError(PyConfigTreeError): ...
+
+
+class NodeLoopError(PyConfigTreeError): ...
+
+
+class NodeDuplicateError(PyConfigTreeError): ...

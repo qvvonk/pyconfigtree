@@ -1,16 +1,15 @@
-from collections.abc import Generator, Iterable, Callable, Awaitable
-from typing import Optional, Union, TypeVar, Any, TypeAlias
+from typing import Optional, Union, TypeVar, Any, Generator, Iterable, Callable, Awaitable, Mapping, Tuple, Dict, Set, FrozenSet
 from types import MappingProxyType
 from .source import ConfigSource
 from .source.base import NodeInfo, NodeType
-from .exceptions import NoSourceError
+from .exceptions import NoSourceError, NodeLoopError, NodeDuplicateError
 from enum import Enum, auto
 
 
 T = TypeVar('T', bound='Node')
 
-ON_NODE_ATTACHED_HOOK: TypeAlias = Callable[['Node', 'Node'], Awaitable[Any]]
-ON_NODE_DETACHED_HOOK: TypeAlias = Callable[['Node', 'Node'], Awaitable[Any]]
+ON_NODE_ATTACHED_HOOK = Callable[['Node', 'Node'], Awaitable[Any]]
+ON_NODE_DETACHED_HOOK = Callable[['Node', 'Node'], Awaitable[Any]]
 
 
 class BaseHookTypes(Enum):
@@ -27,7 +26,7 @@ class Node:
         name: str = '',
         description: str = '',
         source: Optional[ConfigSource] = None,
-        flags: Optional[set[Any]] = None,
+        flags: Optional[Set[Any]] = None,
         on_node_attached_hook: Optional[ON_NODE_ATTACHED_HOOK] = None,
         on_node_detached_hook: Optional[ON_NODE_DETACHED_HOOK] = None,
     ):
@@ -35,21 +34,21 @@ class Node:
         self._name = name
         self._description = description
         self._parent: Optional['Node'] = None
-        self._subnodes: dict[str, Node] = {}
+        self._subnodes: Dict[str, Node] = {}
         self._subnodes_proxy = MappingProxyType(self._subnodes)
         self._source = source
         self._flags = flags or set()
 
-        self._hooks: dict[Any, Callable[..., Awaitable[Any]]] = {}
+        self._hooks: Dict[Any, Callable[..., Awaitable[Any]]] = {}
         self.on_node_attached_hook = on_node_attached_hook
         self.on_node_detached_hook = on_node_detached_hook
 
     @property
-    def flags(self) -> frozenset[Any]:
+    def flags(self) -> FrozenSet[Any]:
         return frozenset(self._flags)
 
     @property
-    def hooks(self) -> MappingProxyType[Any, Callable[..., Awaitable[Any]]]:
+    def hooks(self) -> Mapping[Any, Callable[..., Awaitable[Any]]]:
         return MappingProxyType(self._hooks)
 
     @property
@@ -69,7 +68,7 @@ class Node:
         return self._parent
 
     @property
-    def subnodes(self) -> MappingProxyType[str, 'Node']:
+    def subnodes(self) -> Mapping[str, 'Node']:
         return self._subnodes_proxy
 
     @property
@@ -80,7 +79,7 @@ class Node:
         return node
 
     @property
-    def path(self) -> tuple[str, ...]:
+    def path(self) -> Tuple[str, ...]:
         path = [i.id for i in self.chain_to_root()]
         path.reverse()
         return tuple(path)
@@ -156,7 +155,9 @@ class Node:
 
     def check_can_be_attached(self) -> None:
         if self._parent is not None:
-            raise RuntimeError(f'Node {self.path} already has a parent and cannot be attached to another node.')
+            raise RuntimeError(
+                f'Node {self.path} already has a parent and cannot be attached to another node.'
+            )
 
     def check_can_attach_node(self, node: 'Node') -> None:
         if not self._allow_children:
@@ -165,14 +166,16 @@ class Node:
         node.check_can_be_attached()
 
         if node is self:
-            raise ValueError('Node cannot be attached to itself.')
+            raise NodeLoopError('Node cannot be attached to itself.')
 
         if node.id in self.subnodes:
-            raise ValueError(f'Node {self.path} already contains a subnodee with id {node.id}.')
+            raise NodeDuplicateError(
+                f'Node {self.path} already contains a subnode with id {node.id}.'
+            )
 
         for i in node.chain_to_tails():
             if i is self:
-                raise ValueError(f'Node loop.')  # todo
+                raise NodeLoopError(f'Node loop.')  # todo
         return None
 
     def chain_to_root(self) -> Generator['Node', None, None]:
@@ -232,7 +235,7 @@ class Node:
 
     async def load_from_dict(
         self,
-        data_dict: dict[str, Any],
+        data_dict: Dict[str, Any],
         validate: bool = True,
         run_hook: bool = False
     ) -> None:
@@ -246,7 +249,7 @@ class Node:
                 run_hook=run_hook,
             )
 
-    async def run_hook(self, hook_identifier: Any, *args, **kwargs) -> Any:
+    async def run_hook(self, hook_identifier: Any, *args: Any, **kwargs: Any) -> Any:
         hook = self.hooks.get(hook_identifier)
         if hook is not None:
             await hook(*args, **kwargs)
