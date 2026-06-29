@@ -223,19 +223,28 @@ class Node:
         node_info = self.get_node_info()
         return await self.source.save(data=node_info)
 
-    async def load(self) -> None:
+    async def load(self, validate: bool = True, run_hook: bool = False) -> None:
         if self.source is None:
             raise NoSourceError(f'Cannot load node {self.path}: source not specified.')
 
         data = await self.source.load()
-        await self.load_from_dict(data)
+        await self.load_from_dict(data, validate=validate, run_hook=run_hook)
 
-    async def load_from_dict(self, data_dict: dict[str, Any]) -> None:
+    async def load_from_dict(
+        self,
+        data_dict: dict[str, Any],
+        validate: bool = True,
+        run_hook: bool = False
+    ) -> None:
         for k, data in data_dict.items():
             if k not in self.subnodes:
                 continue
             node = self.subnodes[k]
-            await node.load_from_dict(data_dict[k])
+            await node.load_from_dict(
+                data_dict=data_dict[k],
+                validate=validate,
+                run_hook=run_hook,
+            )
 
     async def run_hook(self, hook_identifier: Any, *args, **kwargs) -> Any:
         hook = self.hooks.get(hook_identifier)
