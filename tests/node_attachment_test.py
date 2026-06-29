@@ -4,12 +4,12 @@ from pyconfigtree.exceptions import LeafNodeError, NodeLoopError, NodeDuplicateE
 
 
 @pytest.mark.parametrize(
-    'param,',
+    'param',
     [
-        (parameter.StringParameter('test', default_value=''),),
-        (parameter.IntParameter('test', default_value=1),),
-        (parameter.FloatParameter('test', default_value=0.1),),
-        (parameter.BoolParameter('test', default_value=True),),
+        parameter.StringParameter('test', default_value=''),
+        parameter.IntParameter('test', default_value=1),
+        parameter.FloatParameter('test', default_value=0.1),
+        parameter.BoolParameter('test', default_value=True),
     ]
 )
 def test_cannot_attach_node_to_parameter(param: parameter.Parameter):
