@@ -2,7 +2,7 @@ from typing import Optional, Union, TypeVar, Any, Generator, Iterable, Callable,
 from types import MappingProxyType
 from .source import ConfigSource
 from .source.base import NodeInfo, NodeType
-from .exceptions import NoSourceError, NodeLoopError, NodeDuplicateError
+from .exceptions import NoSourceError, NodeLoopError, NodeDuplicateError, LeafNodeError
 from enum import Enum, auto
 
 
@@ -161,7 +161,7 @@ class Node:
 
     def check_can_attach_node(self, node: 'Node') -> None:
         if not self._allow_children:
-            raise TypeError(f'Node of type {type(self)} cannot contain subnodes.')
+            raise LeafNodeError(f'Node of type {type(self)} cannot contain subnodes.')
 
         node.check_can_be_attached()
 

@@ -5,7 +5,8 @@ __all__ = [
     'DeserializationError',
     'NoSourceError',
     'NodeLoopError',
-    'NodeDuplicateError'
+    'NodeDuplicateError',
+    'LeafNodeError'
 ]
 
 
@@ -28,3 +29,6 @@ class NodeLoopError(PyConfigTreeError): ...
 
 
 class NodeDuplicateError(PyConfigTreeError): ...
+
+
+class LeafNodeError(PyConfigTreeError): ...

@@ -74,8 +74,8 @@ class Parameter(Node, Generic[T]):
 class MutableParameter(Parameter[T], Generic[T]):
     def __init__(
         self: S,
-        *,
         node_id: str,
+        *,
         name: str = '',
         description: str = '',
         value: T = UNSET,
@@ -209,8 +209,8 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
 
     def __init__(
         self: TS,
-        *,
         node_id: str,
+        *,
         name: str = '',
         description: str = '',
         default_value: TT = UNSET,

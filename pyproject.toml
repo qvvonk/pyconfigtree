@@ -10,3 +10,6 @@ dependencies = []
 toml = [
     "tomli-w>=1.0.0",
 ]
+tests = [
+    "pytest>=7.4.4",
+]
