@@ -1,5 +1,6 @@
 import pytest
-from pyconfigtree import parameter, Node
+
+from pyconfigtree import Node, parameter
 from pyconfigtree.exceptions import LeafNodeError, NodeLoopError, NodeDuplicateError
 
 
@@ -10,14 +11,14 @@ from pyconfigtree.exceptions import LeafNodeError, NodeLoopError, NodeDuplicateE
         parameter.IntParameter('test', default_value=1),
         parameter.FloatParameter('test', default_value=0.1),
         parameter.BoolParameter('test', default_value=True),
-    ]
+    ],
 )
 def test_cannot_attach_node_to_parameter(param: parameter.Parameter):
     node = Node('test')
     assert pytest.raises(
         LeafNodeError,
         param._attach_node,
-        node
+        node,
     )
 
 
@@ -26,7 +27,7 @@ def test_cannot_attach_node_to_itself():
     assert pytest.raises(
         NodeLoopError,
         node._attach_node,
-        node
+        node,
     )
 
 
@@ -37,7 +38,7 @@ def test_cannot_attach_node_with_a_loop():
     assert pytest.raises(
         NodeLoopError,
         node_2._attach_node,
-        node_1
+        node_1,
     )
 
 
@@ -50,5 +51,5 @@ def test_cannot_attach_node_with_same_id():
     assert pytest.raises(
         NodeDuplicateError,
         node_1._attach_node,
-        node_3
+        node_3,
     )

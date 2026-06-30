@@ -1,19 +1,19 @@
-from typing import Any
-
-from .base import ConfigSource, NodeInfo, NodeType
-from pathlib import Path
 import json
+from typing import Any
+from pathlib import Path
+
+from .base import NodeInfo, NodeType, ConfigSource
 
 
 class JSONSource(ConfigSource):
     def __init__(self, path: str | Path, encoding: str = 'utf-8') -> None:
-        self._path =  Path(path)
+        self._path = Path(path)
         self._encoding = encoding
 
     async def load(self) -> dict[str, Any]:
-       with open(self._path, 'r', encoding=self.encoding) as f:
-           data = json.load(f)
-       return data
+        with open(self._path, 'r', encoding=self.encoding) as f:
+            data = json.load(f)
+        return data
 
     async def save(self, data: NodeInfo) -> None:
         dicted = self.node_info_to_dict(data)
@@ -37,6 +37,6 @@ class JSONSource(ConfigSource):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, JSONSource):
             return self.path == other.path
-        elif isinstance(other, (str, Path)):
+        if isinstance(other, (str, Path)):
             return self.path == Path(other)
         return False

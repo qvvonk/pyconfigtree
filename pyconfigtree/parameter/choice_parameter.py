@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 from typing import Generic, TypeVar
+from dataclasses import dataclass
 
 
 T = TypeVar('T')
@@ -18,5 +18,3 @@ class Choice(Generic[T]):
 
         if not isinstance(id, str):
             raise TypeError('Choice ID must be a string.')
-
-

@@ -1,7 +1,7 @@
-from abc import ABC, abstractmethod
 from typing import Any, TypeAlias
-from dataclasses import dataclass, field
+from abc import ABC, abstractmethod
 from enum import Enum, auto
+from dataclasses import field, dataclass
 
 
 SIMPLE_TYPES: TypeAlias = int | float | bool | str

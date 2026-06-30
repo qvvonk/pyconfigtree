@@ -17,3 +17,57 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.15.20",
 ]
+
+
+[tool.mypy]
+plugins = "pydantic.mypy"
+python_version = '3.13'
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict = true
+pretty = true
+exclude = [
+    "docs",
+    ".venv",
+]
+
+
+[tool.ruff]
+line-length = 99
+exclude = [
+    ".git",
+    "build",
+    "dist",
+    "venv",
+    ".venv",
+    "docs",
+    "*.egg-info"
+]
+
+
+[tool.ruff.format]
+quote-style = "single"
+line-ending = "lf"
+indent-style = "space"
+
+
+[tool.ruff.lint]
+select = [
+    "I",
+    "N",
+    "C4",
+    "E",
+    "F",
+    "T20",
+    "RET",
+]
+
+[tool.ruff.lint.isort]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+force-to-top = ["typing"]
+length-sort = true
+lines-between-types = 0
+lines-after-imports = 2
+split-on-trailing-comma = true
+combine-as-imports = true
+force-wrap-aliases = true

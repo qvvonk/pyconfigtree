@@ -6,17 +6,18 @@ __all__ = [
     'Parameter',
     'MutableParameter',
     'TypedParameter',
-    'ON_PARAMETER_VALUE_CHANGED_HOOK'
+    'ON_PARAMETER_VALUE_CHANGED_HOOK',
 ]
 
-from ..base import Node
-from typing import Any, Generic, TypeVar, Protocol, Type, TypeAlias, cast, Self
-from collections.abc import Callable, Awaitable
+from typing import Any, Self, Type, Generic, TypeVar, Protocol, TypeAlias, cast
 from enum import Enum, auto
 from asyncio import Lock
-from pyconfigtree.exceptions import DeserializationError, ValidationError
+from collections.abc import Callable, Awaitable
 
-from ..source.base import NodeInfo, NodeType, ALLOWED_TYPES
+from pyconfigtree.exceptions import ValidationError, DeserializationError
+
+from ..base import Node
+from ..source.base import ALLOWED_TYPES, NodeInfo, NodeType
 
 
 ON_PARAMETER_VALUE_CHANGED_HOOK: TypeAlias = Callable[['MutableParameter[Any]'], Awaitable[Any]]
@@ -28,11 +29,13 @@ class ParameterHookTypes(Enum):
 
 _ST = TypeVar('_ST', contravariant=True)
 
+
 class Serializer(Protocol[_ST]):
     def __call__(self, value: _ST) -> ALLOWED_TYPES: ...
 
 
 _DT = TypeVar('_DT', covariant=True)
+
 
 class Deserializer(Protocol[_DT]):
     def __call__(self, value: ALLOWED_TYPES) -> _DT: ...
@@ -40,6 +43,8 @@ class Deserializer(Protocol[_DT]):
 
 _VT = TypeVar('_VT', contravariant=True)
 _VS = TypeVar('_VS', contravariant=True)
+
+
 class Validator(Protocol[_VS, _VT]):
     async def __call__(self, node: _VS, value: _VT) -> None: ...
 
@@ -68,7 +73,7 @@ class Parameter(Node, Generic[T]):
         self,
         data_dict: dict[str, Any],
         validate: bool = True,
-        run_hook: bool = False
+        run_hook: bool = False,
     ) -> None:
         # Parameter is immutable and its value cannot be set.
         return
@@ -94,7 +99,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         if value is not Ellipsis and default_factory is not None:
             raise ValueError(
                 'Either `default_value` or `default_factory` must be specified, '
-                'but not both of them.'
+                'but not both of them.',
             )
 
         self._default_factory = default_factory
@@ -108,7 +113,7 @@ class MutableParameter(Parameter[T], Generic[T]):
             node_id=node_id,
             value=value if value is not Ellipsis else self.default_value,
             name=name,
-            description=description
+            description=description,
         )
 
         self.on_value_changed_hook = on_value_changed_hook
@@ -145,20 +150,20 @@ class MutableParameter(Parameter[T], Generic[T]):
             name=self.name,
             description=self.description,
             type=NodeType.LEAF,
-            value=self.serialize()
+            value=self.serialize(),
         )
 
     async def load_from_dict(
         self,
         data_dict: Any,
         validate: bool = True,
-        run_hook: bool = False
+        run_hook: bool = False,
     ) -> None:
         await self.set_value(
             data_dict,
             save=False,
             run_hook=run_hook,
-            validate=validate
+            validate=validate,
         )
 
     async def set_value(
@@ -238,7 +243,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
             serializer=serializer if serializer is not None else self._DEFAULT_SERIALIZER,
             deserializer=deserializer if deserializer is not None else self._DEFAULT_DESERIALIZER,
             validator=validator,
-            on_value_changed_hook=on_value_changed_hook
+            on_value_changed_hook=on_value_changed_hook,
         )
 
     def deserialize(self, value: Any) -> TT:
@@ -246,7 +251,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
         if not isinstance(res, self._VALUE_TYPE):
             raise DeserializationError(
                 f'Deserialized value of `{self.__class__.__name__}` must be an instance of '
-                f'`{self._VALUE_TYPE.__name__}`, not `{type(res)}`.'
+                f'`{self._VALUE_TYPE.__name__}`, not `{type(res)}`.',
             )
         return res
 
@@ -254,6 +259,6 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
         if not isinstance(value, self._VALUE_TYPE):
             raise ValidationError(
                 f'Value of `{self.__class__.__name__}` must be an instance of '
-                f'`{self._VALUE_TYPE.__name__}`, not `{type(value)}`.'
+                f'`{self._VALUE_TYPE.__name__}`, not `{type(value)}`.',
             )
-        return await (super().validate(value))
+        return await super().validate(value)

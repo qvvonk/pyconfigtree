@@ -1,20 +1,21 @@
 from typing import Any
-
-from .base import ConfigSource, NodeInfo, NodeType
 from pathlib import Path
-import tomllib
+
 import tomli_w
+import tomllib
+
+from .base import NodeInfo, NodeType, ConfigSource
 
 
 class TOMLSource(ConfigSource):
     def __init__(self, path: str | Path, encoding: str = 'utf-8') -> None:
-        self._path =  Path(path)
+        self._path = Path(path)
         self._encoding = encoding
 
     async def load(self) -> dict[str, Any]:
-       with open(self._path, 'rb') as f:
-           data = tomllib.load(f)
-       return data
+        with open(self._path, 'rb') as f:
+            data = tomllib.load(f)
+        return data
 
     async def save(self, data: NodeInfo) -> None:
         dicted = self.node_info_to_dict(data)
@@ -38,6 +39,6 @@ class TOMLSource(ConfigSource):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, TOMLSource):
             return self.path == other.path
-        elif isinstance(other, (str, Path)):
+        if isinstance(other, (str, Path)):
             return self.path == Path(other)
         return False

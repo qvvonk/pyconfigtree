@@ -32,7 +32,7 @@ class BoolParameter(TypedParameter[bool]):
             deserialize=False,
             validate=validate,
             run_hook=run_hook,
-            save=save
+            save=save,
         )
 
     async def off(self, save: bool = True, run_hook: bool = True, validate: bool = True) -> None:
@@ -41,18 +41,22 @@ class BoolParameter(TypedParameter[bool]):
             deserialize=False,
             validate=validate,
             run_hook=run_hook,
-            save=save
+            save=save,
         )
 
-    async def toggle(self, save: bool = True, run_hook: bool = True, validate: bool = True) -> None:
+    async def toggle(
+        self, save: bool = True, run_hook: bool = True, validate: bool = True
+    ) -> None:
         await self.set_value(
             not self.value,
             deserialize=False,
             validate=validate,
             run_hook=run_hook,
-            save=save
+            save=save,
         )
 
-    async def next_value(self, save: bool = True, run_hook: bool = True, validate: bool = True) -> bool:
+    async def next_value(
+        self, save: bool = True, run_hook: bool = True, validate: bool = True
+    ) -> bool:
         await self.toggle(save=save, run_hook=run_hook, validate=validate)
         return self.value

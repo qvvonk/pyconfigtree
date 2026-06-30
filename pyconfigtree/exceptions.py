@@ -6,7 +6,7 @@ __all__ = [
     'NoSourceError',
     'NodeLoopError',
     'NodeDuplicateError',
-    'LeafNodeError'
+    'LeafNodeError',
 ]
 
 

@@ -1,11 +1,13 @@
 from __future__ import annotations
-from typing import TypeVar, Any, TypeAlias, overload
-from collections.abc import Generator, Callable, Awaitable, Mapping, Sequence
-from types import MappingProxyType
-from .source import ConfigSource
-from .source.base import NodeInfo, NodeType
-from .exceptions import NoSourceError, NodeLoopError, NodeDuplicateError, LeafNodeError
+
+from typing import Any, TypeVar, TypeAlias, overload
 from enum import Enum, auto
+from types import MappingProxyType
+from collections.abc import Mapping, Callable, Sequence, Awaitable, Generator
+
+from .source import ConfigSource
+from .exceptions import LeafNodeError, NodeLoopError, NoSourceError, NodeDuplicateError
+from .source.base import NodeInfo, NodeType
 
 
 T = TypeVar('T', bound='Node')
@@ -164,13 +166,13 @@ class Node:
                 for k, i in self.subnodes.items()
                 if (same_source_only and self.inherited_source == i.inherited_source)
                 or not same_source_only
-            }
+            },
         )
 
     def check_can_be_attached(self) -> None:
         if self._parent is not None:
             raise RuntimeError(
-                f'Node {self.path} already has a parent and cannot be attached to another node.'
+                f'Node {self.path} already has a parent and cannot be attached to another node.',
             )
 
     def check_can_attach_node(self, node: Node) -> None:
@@ -184,13 +186,13 @@ class Node:
 
         if node.id in self.subnodes:
             raise NodeDuplicateError(
-                f'Node {self.path} already contains a subnode with id {node.id}.'
+                f'Node {self.path} already contains a subnode with id {node.id}.',
             )
 
         for i in node.chain_to_tails():
             if i is self:
-                raise NodeLoopError(f'Node loop.')  # todo
-        return None
+                raise NodeLoopError('Node loop.')  # todo
+        return
 
     def chain_to_root(self) -> Generator[Node, None, None]:
         node: Node | None = self
@@ -214,7 +216,7 @@ class Node:
             if len(self_path) <= len(path):
                 return False
 
-        return self_path[:len(path)] == path
+        return self_path[: len(path)] == path
 
     def is_parent_of(self, node: Node | Sequence[str], direct: bool = True) -> bool:
         path = node.path if isinstance(node, Node) else node
@@ -227,7 +229,7 @@ class Node:
             if len(self_path) >= len(path):
                 return False
 
-        return path[:len(self_path)] == self_path
+        return path[: len(self_path)] == self_path
 
     async def save(self, same_source_only: bool = True) -> None:
         if self.source is None:
@@ -251,7 +253,7 @@ class Node:
         self,
         data_dict: dict[str, Any],
         validate: bool = True,
-        run_hook: bool = False
+        run_hook: bool = False,
     ) -> None:
         for k, data in data_dict.items():
             if k not in self.subnodes:
