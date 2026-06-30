@@ -10,7 +10,7 @@ __all__ = [
 ]
 
 from ..base import Node
-from typing import Any, Generic, TypeVar, Protocol, Type, TypeAlias, cast
+from typing import Any, Generic, TypeVar, Protocol, Type, TypeAlias, cast, Self
 from collections.abc import Callable, Awaitable
 from enum import Enum, auto
 from asyncio import Lock
@@ -45,7 +45,6 @@ class Validator(Protocol[_VS, _VT]):
 
 
 T = TypeVar('T')
-S = TypeVar('S', bound='MutableParameter')
 
 
 class Parameter(Node, Generic[T]):
@@ -77,7 +76,7 @@ class Parameter(Node, Generic[T]):
 
 class MutableParameter(Parameter[T], Generic[T]):
     def __init__(
-        self: S,
+        self,
         node_id: str,
         *,
         name: str = '',
@@ -85,7 +84,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         value: T = cast(T, ...),
         default_value: T = cast(T, ...),
         default_factory: Callable[[], T] | None = None,
-        validator: Validator[S, T] | None = None,
+        validator: Validator[Self, T] | None = None,
         serializer: Serializer[T],
         deserializer: Deserializer[T],
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
@@ -129,7 +128,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         return self._deserializer
 
     @property
-    def validator(self) -> Validator[S, T] | None:
+    def validator(self) -> Validator[Self, T] | None:
         return self._validator
 
     @property
@@ -195,7 +194,6 @@ class MutableParameter(Parameter[T], Generic[T]):
             await self.validator(self, value)
 
 
-TS = TypeVar('TS', bound='TypedParameter')
 TT = TypeVar('TT')
 
 
@@ -217,7 +215,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
                 raise TypeError(f'`{cls.__name__}` must define `{i}`.')
 
     def __init__(
-        self: TS,
+        self,
         node_id: str,
         *,
         name: str = '',
@@ -225,7 +223,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
         value: TT = cast(TT, ...),
         default_value: TT = cast(TT, ...),
         default_factory: Callable[[], TT] | None = None,
-        validator: Validator[TS, TT] | None = None,
+        validator: Validator[Self, TT] | None = None,
         serializer: Serializer[TT] | None = None,
         deserializer: Deserializer[TT] | None = None,
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
