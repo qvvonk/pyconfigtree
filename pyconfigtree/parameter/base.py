@@ -20,8 +20,6 @@ from pyconfigtree.exceptions import DeserializationError, ValidationError
 from ..source.base import NodeInfo, NodeType, ALLOWED_TYPES
 
 
-T = TypeVar('T')
-S = TypeVar('S', bound='MutableParameter')
 UNSET = object()
 
 
@@ -49,6 +47,9 @@ _VS = TypeVar('_VS', contravariant=True)
 class Validator(Protocol[_VS, _VT]):
     async def __call__(self, node: _VS, value: _VT) -> None: ...
 
+
+T = TypeVar('T')
+S = TypeVar('S', bound='MutableParameter')
 
 
 class Parameter(Node, Generic[T]):
