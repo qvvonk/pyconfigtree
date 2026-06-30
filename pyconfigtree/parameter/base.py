@@ -21,7 +21,7 @@ from ..source.base import NodeInfo, NodeType, ALLOWED_TYPES
 
 
 T = TypeVar('T')
-S = TypeVar('S')
+S = TypeVar('S', bound='MutableParameter')
 UNSET = object()
 
 
@@ -32,16 +32,22 @@ class ParameterHookTypes(Enum):
     PARAMETER_VALUE_CHANGED = auto()
 
 
-class Serializer(Protocol[T]):
-    def __call__(self, value: T) -> ALLOWED_TYPES: ...
+_ST = TypeVar('_ST', contravariant=True)
+
+class Serializer(Protocol[_ST]):
+    def __call__(self, value: _ST) -> ALLOWED_TYPES: ...
 
 
-class Deserializer(Protocol[T]):
-    def __call__(self, value: ALLOWED_TYPES) -> T: ...
+_DT = TypeVar('_DT', covariant=True)
+
+class Deserializer(Protocol[_DT]):
+    def __call__(self, value: ALLOWED_TYPES) -> _DT: ...
 
 
-class Validator(Protocol[S, T]):
-    async def __call__(self, node: S, value: T) -> None: ...
+_VT = TypeVar('_VT', contravariant=True)
+_VS = TypeVar('_VS', contravariant=True)
+class Validator(Protocol[_VS, _VT]):
+    async def __call__(self, node: _VS, value: _VT) -> None: ...
 
 
 
@@ -183,11 +189,11 @@ class MutableParameter(Parameter[T], Generic[T]):
         return self.deserializer(value)
 
     async def validate(self, value: T) -> None:
-        if self._validator:
+        if self.validator is not None:
             await self.validator(self, value)
 
 
-TS = TypeVar('TS')
+TS = TypeVar('TS', bound='TypedParameter')
 TT = TypeVar('TT')
 
 

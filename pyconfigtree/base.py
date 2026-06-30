@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import TypeVar, Any, TypeAlias, overload
-from collections.abc import Generator, Iterable, Callable, Awaitable, Mapping
+from collections.abc import Generator, Callable, Awaitable, Mapping, Sequence
 from types import MappingProxyType
 from .source import ConfigSource
 from .source.base import NodeInfo, NodeType
@@ -41,7 +41,7 @@ class Node:
         self._source = source
         self._flags = flags or set()
 
-        self._hooks: dict[Any, Callable[..., Awaitable[Any]]] = {}
+        self._hooks: dict[Any, Callable[..., Awaitable[Any]] | None] = {}
         self.on_node_attached_hook = on_node_attached_hook
         self.on_node_detached_hook = on_node_detached_hook
 
@@ -50,7 +50,7 @@ class Node:
         return frozenset(self._flags)
 
     @property
-    def hooks(self) -> Mapping[Any, Callable[..., Awaitable[Any]]]:
+    def hooks(self) -> Mapping[Any, Callable[..., Awaitable[Any]] | None]:
         return MappingProxyType(self._hooks)
 
     @property
@@ -103,7 +103,7 @@ class Node:
         return self._hooks.get(BaseHookTypes.ON_NODE_ATTACHED)
 
     @on_node_attached_hook.setter
-    def on_node_attached_hook(self, hook: ON_NODE_ATTACHED_HOOK | None):
+    def on_node_attached_hook(self, hook: ON_NODE_ATTACHED_HOOK | None) -> None:
         self._hooks[BaseHookTypes.ON_NODE_ATTACHED] = hook
 
     @property
@@ -137,9 +137,9 @@ class Node:
         if node_id not in self.subnodes:
             raise KeyError(f'Node {self.path} has no subnode with id {node_id}.')
 
-        node = self._subnodes.pop(node_id)
-        node._parent = None
-        return node
+        detached_node = self._subnodes.pop(node_id)
+        detached_node._parent = None
+        return detached_node
 
     @overload
     async def detach_node(self, node: str, run_hook: bool = True) -> Node: ...
@@ -148,10 +148,10 @@ class Node:
     async def detach_node(self, node: T, run_hook: bool = True) -> T: ...
 
     async def detach_node(self, node: T | str, run_hook: bool = True) -> T | Node:
-        node = self._detach_node(node)
+        detached_node = self._detach_node(node)
         if run_hook:
-            await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node, self)
-        return node
+            await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, detached_node, self)
+        return detached_node
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
         return NodeInfo(
@@ -193,7 +193,7 @@ class Node:
         return None
 
     def chain_to_root(self) -> Generator[Node, None, None]:
-        node = self
+        node: Node | None = self
         while node is not None:
             yield node
             node = node.parent
@@ -203,7 +203,7 @@ class Node:
         for i in self.subnodes.values():
             yield from i.chain_to_tails()
 
-    def is_child_of(self, node: Node | Iterable[str], direct: bool = True) -> bool:
+    def is_child_of(self, node: Node | Sequence[str], direct: bool = True) -> bool:
         path = node.path if isinstance(node, Node) else tuple(node)
         self_path = self.path
 
@@ -216,7 +216,7 @@ class Node:
 
         return self_path[:len(path)] == path
 
-    def is_parent_of(self, node: Node | Iterable[str], direct: bool = True) -> bool:
+    def is_parent_of(self, node: Node | Sequence[str], direct: bool = True) -> bool:
         path = node.path if isinstance(node, Node) else node
         self_path = self.path
 
