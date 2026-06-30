@@ -38,7 +38,8 @@ def float_deserializer(value: Any) -> float:
 class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
     _DEFAULT_SERIALIZER = choice_serializer
     _DEFAULT_DESERIALIZER = ...
-    _VALUE_TYPE = ...
+    _VALUE_TYPE = Choice
+
     def __init__(
         self,
         node_id: str,
@@ -85,15 +86,11 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
         deserialize: bool = True,
         validate: bool = True,
         run_hook: bool = True,
-        save: bool = True,
-        use_fallback_choice: bool = True,
+        save: bool = True
     ) -> None:
         choice = self.choices.get(value) if isinstance(value, str) else value
         if choice not in self.choices.values():
-            if use_fallback_choice:
-                choice = self.choices[self.fallback_choice_id]
-            else:
-                raise ValueError(f'Invalid choice.')
+            raise ValueError(f'Invalid choice.')
 
         await super().set_value(
             choice, deserialize=deserialize, validate=validate, run_hook=run_hook, save=save
