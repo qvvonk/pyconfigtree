@@ -1,4 +1,5 @@
-from typing import Optional, Union, TypeVar, Any, Generator, Iterable, Callable, Awaitable, Mapping, Tuple, Dict, Set, FrozenSet
+from typing import Optional, Union, TypeVar, Any, TypeAlias
+from collections.abc import Generator, Iterable, Callable, Awaitable, Mapping
 from types import MappingProxyType
 from .source import ConfigSource
 from .source.base import NodeInfo, NodeType
@@ -8,8 +9,8 @@ from enum import Enum, auto
 
 T = TypeVar('T', bound='Node')
 
-ON_NODE_ATTACHED_HOOK = Callable[['Node', 'Node'], Awaitable[Any]]
-ON_NODE_DETACHED_HOOK = Callable[['Node', 'Node'], Awaitable[Any]]
+ON_NODE_ATTACHED_HOOK: TypeAlias = Callable[['Node', 'Node'], Awaitable[Any]]
+ON_NODE_DETACHED_HOOK: TypeAlias = Callable[['Node', 'Node'], Awaitable[Any]]
 
 
 class BaseHookTypes(Enum):
@@ -25,26 +26,26 @@ class Node:
         node_id: str,
         name: str = '',
         description: str = '',
-        source: Optional[ConfigSource] = None,
-        flags: Optional[Set[Any]] = None,
-        on_node_attached_hook: Optional[ON_NODE_ATTACHED_HOOK] = None,
-        on_node_detached_hook: Optional[ON_NODE_DETACHED_HOOK] = None,
+        source: ConfigSource | None = None,
+        flags: set[Any] | None = None,
+        on_node_attached_hook: ON_NODE_ATTACHED_HOOK | None = None,
+        on_node_detached_hook: ON_NODE_DETACHED_HOOK | None = None,
     ):
         self._id: str = node_id
         self._name = name
         self._description = description
         self._parent: Optional['Node'] = None
-        self._subnodes: Dict[str, Node] = {}
+        self._subnodes: dict[str, Node] = {}
         self._subnodes_proxy = MappingProxyType(self._subnodes)
         self._source = source
         self._flags = flags or set()
 
-        self._hooks: Dict[Any, Callable[..., Awaitable[Any]]] = {}
+        self._hooks: dict[Any, Callable[..., Awaitable[Any]]] = {}
         self.on_node_attached_hook = on_node_attached_hook
         self.on_node_detached_hook = on_node_detached_hook
 
     @property
-    def flags(self) -> FrozenSet[Any]:
+    def flags(self) -> frozenset[Any]:
         return frozenset(self._flags)
 
     @property
@@ -79,7 +80,7 @@ class Node:
         return node
 
     @property
-    def path(self) -> Tuple[str, ...]:
+    def path(self) -> tuple[str, ...]:
         path = [i.id for i in self.chain_to_root()]
         path.reverse()
         return tuple(path)
@@ -235,7 +236,7 @@ class Node:
 
     async def load_from_dict(
         self,
-        data_dict: Dict[str, Any],
+        data_dict: dict[str, Any],
         validate: bool = True,
         run_hook: bool = False
     ) -> None:
