@@ -23,6 +23,9 @@ class Choice(Generic[T]):
         if not isinstance(id, str):
             raise TypeError('Choice ID must be a string.')
 
+    def __str__(self) -> str:
+        return self.id
+
 
 def choice_serializer(value: Choice[Any]) -> str:
     return value.id
@@ -74,3 +77,24 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
     def _default_deserializer(self, value: Any) -> Choice:
         value = str(value)
         return self.choices.get(value, self.choices[self.fallback_choice_id])
+
+    async def set_value(
+        self,
+        value: Choice[T] | str,
+        *,
+        deserialize: bool = True,
+        validate: bool = True,
+        run_hook: bool = True,
+        save: bool = True,
+        use_fallback_choice: bool = True,
+    ) -> None:
+        choice = self.choices.get(value) if isinstance(value, str) else value
+        if choice not in self.choices.values():
+            if use_fallback_choice:
+                choice = self.choices[self.fallback_choice_id]
+            else:
+                raise ValueError(f'Invalid choice.')
+
+        await super().set_value(
+            choice, deserialize=deserialize, validate=validate, run_hook=run_hook, save=save
+        )

@@ -219,6 +219,10 @@ class MutableParameter(Parameter[T], Generic[T]):
 TT = TypeVar('TT')
 
 
+class _TypedParameterKwargs(_MutableParameterKwargs[_KT, _KP], Generic[_KT, _KP]):
+    ...
+
+
 class TypedParameter(MutableParameter[TT], Generic[TT]):
     _DEFAULT_SERIALIZER: Serializer[TT]
     _DEFAULT_DESERIALIZER: Deserializer[TT]
