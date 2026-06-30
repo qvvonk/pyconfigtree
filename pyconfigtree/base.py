@@ -236,9 +236,9 @@ class Node:
             for i in self.chain_to_root():
                 if i.source is not None:
                     return await i.save(same_source_only=same_source_only)
-
-        node_info = self.get_node_info()
-        return await self.source.save(data=node_info)
+        else:
+            node_info = self.get_node_info()
+            return await self.source.save(data=node_info)
 
     async def load(self, validate: bool = True, run_hook: bool = False) -> None:
         if self.source is None:

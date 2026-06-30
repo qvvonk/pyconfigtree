@@ -22,7 +22,7 @@ class TOMLSource(ConfigSource):
             f.write(tomli_w.dumps(dicted, multiline_strings=True, indent=4))
         return
 
-    def node_info_to_dict(self, node: NodeInfo) -> dict[str, Any]:
+    def node_info_to_dict(self, node: NodeInfo) -> Any:
         if node.type is NodeType.LEAF:
             return node.value
         return {k: self.node_info_to_dict(v) for k, v in node.subnodes.items()}

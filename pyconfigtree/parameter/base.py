@@ -6,21 +6,17 @@ __all__ = [
     'Parameter',
     'MutableParameter',
     'TypedParameter',
-    'UNSET',
     'ON_PARAMETER_VALUE_CHANGED_HOOK'
 ]
 
 from ..base import Node
-from typing import Any, Generic, TypeVar, Protocol, Type, TypeAlias
+from typing import Any, Generic, TypeVar, Protocol, Type, TypeAlias, cast
 from collections.abc import Callable, Awaitable
 from enum import Enum, auto
 from asyncio import Lock
 from pyconfigtree.exceptions import DeserializationError, ValidationError
 
 from ..source.base import NodeInfo, NodeType, ALLOWED_TYPES
-
-
-UNSET = object()
 
 
 ON_PARAMETER_VALUE_CHANGED_HOOK: TypeAlias = Callable[['MutableParameter[Any]'], Awaitable[Any]]
@@ -86,16 +82,21 @@ class MutableParameter(Parameter[T], Generic[T]):
         *,
         name: str = '',
         description: str = '',
-        value: T = UNSET,
-        default_value: T = UNSET,
-        default_factory: Callable[[], T] = UNSET,
+        value: T = cast(T, ...),
+        default_value: T = cast(T, ...),
+        default_factory: Callable[[], T] | None = None,
         validator: Validator[S, T] | None = None,
         serializer: Serializer[T],
         deserializer: Deserializer[T],
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
     ) -> None:
-        if default_value is UNSET and default_factory is UNSET:
-            raise ValueError('Default value or default factory must be set.')
+        if value is Ellipsis and default_value is None:
+            raise ValueError('Either `default_value` or `default_factory` must be specified.')
+        if value is not Ellipsis and default_factory is not None:
+            raise ValueError(
+                'Either `default_value` or `default_factory` must be specified, '
+                'but not both of them.'
+            )
 
         self._default_factory = default_factory
         self._default_value = default_value
@@ -106,7 +107,7 @@ class MutableParameter(Parameter[T], Generic[T]):
 
         super().__init__(
             node_id=node_id,
-            value=value if value is not UNSET else self.default_value,
+            value=value if value is not Ellipsis else self.default_value,
             name=name,
             description=description
         )
@@ -115,7 +116,7 @@ class MutableParameter(Parameter[T], Generic[T]):
 
     @property
     def default_value(self) -> T:
-        if self._default_factory is not UNSET:
+        if self._default_factory is not None:
             return self._default_factory()
         return self._default_value
 
@@ -221,8 +222,9 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
         *,
         name: str = '',
         description: str = '',
-        default_value: TT = UNSET,
-        default_factory: Callable[[], TT] = UNSET,
+        value: TT = cast(TT, ...),
+        default_value: TT = cast(TT, ...),
+        default_factory: Callable[[], TT] | None = None,
         validator: Validator[TS, TT] | None = None,
         serializer: Serializer[TT] | None = None,
         deserializer: Deserializer[TT] | None = None,
@@ -232,6 +234,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
             node_id=node_id,
             name=name,
             description=description,
+            value=value,
             default_value=default_value,
             default_factory=default_factory,
             serializer=serializer if serializer is not None else self._DEFAULT_SERIALIZER,
