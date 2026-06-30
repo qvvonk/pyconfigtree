@@ -240,7 +240,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
             on_value_changed_hook=on_value_changed_hook
         )
 
-    def deserialize(self, value: Any) -> bool:
+    def deserialize(self, value: Any) -> TT:
         res = super().deserialize(value)
         if not isinstance(res, self._VALUE_TYPE):
             raise DeserializationError(
