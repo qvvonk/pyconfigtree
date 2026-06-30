@@ -7,15 +7,16 @@ __all__ = [
     'MutableParameter',
     'TypedParameter',
     'ON_PARAMETER_VALUE_CHANGED_HOOK',
-    '_MutableParameterKwargs'
+    '_MutableParameterKwargs',
 ]
 
 
 from typing import Any, Type, Generic, TypeVar, Protocol, TypeAlias
-from typing_extensions import TypedDict, NotRequired, Self, Unpack
 from enum import Enum, auto
 from asyncio import Lock
 from collections.abc import Callable, Awaitable
+
+from typing_extensions import Self, Unpack, TypedDict, NotRequired
 
 from pyconfigtree.exceptions import ValidationError, DeserializationError
 
@@ -84,6 +85,8 @@ class Parameter(Node, Generic[T]):
 
 _KT = TypeVar('_KT')  # Parameter value type
 _KP = TypeVar('_KP')  # Parameter class
+
+
 class _MutableParameterKwargs(TypedDict, Generic[_KT, _KP]):
     name: NotRequired[str]
     description: NotRequired[str]
@@ -219,8 +222,7 @@ class MutableParameter(Parameter[T], Generic[T]):
 TT = TypeVar('TT')
 
 
-class _TypedParameterKwargs(_MutableParameterKwargs[_KT, _KP], Generic[_KT, _KP]):
-    ...
+class _TypedParameterKwargs(_MutableParameterKwargs[_KT, _KP], Generic[_KT, _KP]): ...
 
 
 class TypedParameter(MutableParameter[TT], Generic[TT]):

@@ -1,9 +1,11 @@
+from typing import Any, Self, Generic, TypeVar
 from types import MappingProxyType
-from typing import Generic, TypeVar, Self, Any
 from dataclasses import dataclass
-from collections.abc import Sequence, Mapping
-from .base import TypedParameter, _MutableParameterKwargs
+from collections.abc import Mapping, Sequence
+
 from typing_extensions import Unpack
+
+from .base import TypedParameter, _MutableParameterKwargs
 
 
 T = TypeVar('T')
@@ -46,7 +48,7 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
         *,
         choices: Sequence[Choice],
         fallback_choice_id: str,
-        **kwargs: Unpack[_MutableParameterKwargs[Choice, Self]]
+        **kwargs: Unpack[_MutableParameterKwargs[Choice, Self]],
     ):
         self._DEFAULT_DESERIALIZER = self._default_deserializer
         if not choices:
@@ -62,10 +64,7 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
             raise ValueError('Fallback choice ID does not exists.')
         self._fallback_choice_id = fallback_choice_id
 
-        super().__init__(
-            node_id=node_id,
-            **kwargs
-        )
+        super().__init__(node_id=node_id, **kwargs)
 
     @property
     def choices(self) -> Mapping[str, Choice[T]]:
@@ -86,11 +85,11 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
         deserialize: bool = True,
         validate: bool = True,
         run_hook: bool = True,
-        save: bool = True
+        save: bool = True,
     ) -> None:
         choice = self.choices.get(value) if isinstance(value, str) else value
         if choice not in self.choices.values():
-            raise ValueError(f'Invalid choice.')
+            raise ValueError('Invalid choice.')
 
         await super().set_value(
             choice, deserialize=deserialize, validate=validate, run_hook=run_hook, save=save

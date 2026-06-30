@@ -1,4 +1,4 @@
-from typing import Any, TypeAlias, Union
+from typing import Any, Union, TypeAlias
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from dataclasses import field, dataclass
@@ -6,8 +6,8 @@ from dataclasses import field, dataclass
 
 SIMPLE_TYPES: TypeAlias = int | float | bool | str
 CONTAINER_TYPES: TypeAlias = (
-    dict[str, Union[SIMPLE_TYPES, 'CONTAINER_TYPES']] |
-    list[Union[SIMPLE_TYPES, 'CONTAINER_TYPES']]
+    dict[str, Union[SIMPLE_TYPES, 'CONTAINER_TYPES']]
+    | list[Union[SIMPLE_TYPES, 'CONTAINER_TYPES']]
 )
 ALLOWED_TYPES: TypeAlias = SIMPLE_TYPES | CONTAINER_TYPES
 
