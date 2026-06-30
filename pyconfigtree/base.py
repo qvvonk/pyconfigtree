@@ -1,4 +1,5 @@
-from typing import Optional, Union, TypeVar, Any, TypeAlias
+from __future__ import annotations
+from typing import TypeVar, Any, TypeAlias, overload
 from collections.abc import Generator, Iterable, Callable, Awaitable, Mapping
 from types import MappingProxyType
 from .source import ConfigSource
@@ -34,7 +35,7 @@ class Node:
         self._id: str = node_id
         self._name = name
         self._description = description
-        self._parent: Optional['Node'] = None
+        self._parent: Node | None = None
         self._subnodes: dict[str, Node] = {}
         self._subnodes_proxy = MappingProxyType(self._subnodes)
         self._source = source
@@ -65,15 +66,15 @@ class Node:
         return self._description
 
     @property
-    def parent(self) -> Optional['Node']:
+    def parent(self) -> Node | None:
         return self._parent
 
     @property
-    def subnodes(self) -> Mapping[str, 'Node']:
+    def subnodes(self) -> Mapping[str, Node]:
         return self._subnodes_proxy
 
     @property
-    def root(self) -> 'Node':
+    def root(self) -> Node:
         node = self
         while node.parent is not None:
             node = node.parent
@@ -86,11 +87,11 @@ class Node:
         return tuple(path)
 
     @property
-    def source(self) -> Optional[ConfigSource]:
+    def source(self) -> ConfigSource | None:
         return self._source
 
     @property
-    def inherited_source(self) -> Optional[ConfigSource]:
+    def inherited_source(self) -> ConfigSource | None:
         if self.source is not None:
             return self._source
         if self.parent is not None:
@@ -98,19 +99,19 @@ class Node:
         return None
 
     @property
-    def on_node_attached_hook(self) -> Optional[ON_NODE_ATTACHED_HOOK]:
+    def on_node_attached_hook(self) -> ON_NODE_ATTACHED_HOOK | None:
         return self._hooks.get(BaseHookTypes.ON_NODE_ATTACHED)
 
     @on_node_attached_hook.setter
-    def on_node_attached_hook(self, hook: Optional[ON_NODE_ATTACHED_HOOK]):
+    def on_node_attached_hook(self, hook: ON_NODE_ATTACHED_HOOK | None):
         self._hooks[BaseHookTypes.ON_NODE_ATTACHED] = hook
 
     @property
-    def on_node_detached_hook(self) -> Optional[ON_NODE_DETACHED_HOOK]:
+    def on_node_detached_hook(self) -> ON_NODE_DETACHED_HOOK | None:
         return self._hooks.get(BaseHookTypes.ON_NODE_DETACHED)
 
     @on_node_detached_hook.setter
-    def on_node_detached_hook(self, hook: Optional[ON_NODE_DETACHED_HOOK]) -> None:
+    def on_node_detached_hook(self, hook: ON_NODE_DETACHED_HOOK | None) -> None:
         self._hooks[BaseHookTypes.ON_NODE_DETACHED] = hook
 
     def _attach_node(self, node: T) -> T:
@@ -125,7 +126,13 @@ class Node:
             await self.run_hook(BaseHookTypes.ON_NODE_ATTACHED, node, self)
         return node
 
-    def _detach_node(self, node: Union[T, str]) -> Union[T, 'Node']:
+    @overload
+    def _detach_node(self, node: str) -> Node: ...
+
+    @overload
+    def _detach_node(self, node: T) -> T: ...
+
+    def _detach_node(self, node: T | str) -> T | Node:
         node_id = node if isinstance(node, str) else node.id
         if node_id not in self.subnodes:
             raise KeyError(f'Node {self.path} has no subnode with id {node_id}.')
@@ -134,7 +141,13 @@ class Node:
         node._parent = None
         return node
 
-    async def detach_node(self, node: Union[T, str], run_hook: bool = True) -> Union[T, 'Node']:
+    @overload
+    async def detach_node(self, node: str, run_hook: bool = True) -> Node: ...
+
+    @overload
+    async def detach_node(self, node: T, run_hook: bool = True) -> T: ...
+
+    async def detach_node(self, node: T | str, run_hook: bool = True) -> T | Node:
         node = self._detach_node(node)
         if run_hook:
             await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node, self)
@@ -160,7 +173,7 @@ class Node:
                 f'Node {self.path} already has a parent and cannot be attached to another node.'
             )
 
-    def check_can_attach_node(self, node: 'Node') -> None:
+    def check_can_attach_node(self, node: Node) -> None:
         if not self._allow_children:
             raise LeafNodeError(f'Node of type {type(self)} cannot contain subnodes.')
 
@@ -179,18 +192,18 @@ class Node:
                 raise NodeLoopError(f'Node loop.')  # todo
         return None
 
-    def chain_to_root(self) -> Generator['Node', None, None]:
+    def chain_to_root(self) -> Generator[Node, None, None]:
         node = self
         while node is not None:
             yield node
             node = node.parent
 
-    def chain_to_tails(self) -> Generator['Node', None, None]:
+    def chain_to_tails(self) -> Generator[Node, None, None]:
         yield self
         for i in self.subnodes.values():
             yield from i.chain_to_tails()
 
-    def is_child_of(self, node: Union['Node', Iterable[str]], direct: bool = True) -> bool:
+    def is_child_of(self, node: Node | Iterable[str], direct: bool = True) -> bool:
         path = node.path if isinstance(node, Node) else tuple(node)
         self_path = self.path
 
@@ -203,7 +216,7 @@ class Node:
 
         return self_path[:len(path)] == path
 
-    def is_parent_of(self, node: Union['Node', Iterable[str]], direct: bool = True) -> bool:
+    def is_parent_of(self, node: Node | Iterable[str], direct: bool = True) -> bool:
         path = node.path if isinstance(node, Node) else node
         self_path = self.path
 

@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 from .base import ConfigSource, NodeInfo, NodeType
 from pathlib import Path
@@ -6,7 +6,7 @@ import json
 
 
 class JSONSource(ConfigSource):
-    def __init__(self, path: Union[str, Path], encoding: str = 'utf-8') -> None:
+    def __init__(self, path: str | Path, encoding: str = 'utf-8') -> None:
         self._path =  Path(path)
         self._encoding = encoding
 

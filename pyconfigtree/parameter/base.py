@@ -11,7 +11,7 @@ __all__ = [
 ]
 
 from ..base import Node
-from typing import Any, Generic, TypeVar, Optional, Protocol, Type, TypeAlias
+from typing import Any, Generic, TypeVar, Protocol, Type, TypeAlias
 from collections.abc import Callable, Awaitable
 from enum import Enum, auto
 from asyncio import Lock
@@ -82,10 +82,10 @@ class MutableParameter(Parameter[T], Generic[T]):
         value: T = UNSET,
         default_value: T = UNSET,
         default_factory: Callable[[], T] = UNSET,
-        validator: Optional[Validator[S, T]] = None,
+        validator: Validator[S, T] | None = None,
         serializer: Serializer[T],
         deserializer: Deserializer[T],
-        on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
+        on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
     ) -> None:
         if default_value is UNSET and default_factory is UNSET:
             raise ValueError('Default value or default factory must be set.')
@@ -121,15 +121,15 @@ class MutableParameter(Parameter[T], Generic[T]):
         return self._deserializer
 
     @property
-    def validator(self) -> Optional[Validator[S, T]]:
+    def validator(self) -> Validator[S, T] | None:
         return self._validator
 
     @property
-    def on_value_changed_hook(self) -> Optional[ON_PARAMETER_VALUE_CHANGED_HOOK]:
+    def on_value_changed_hook(self) -> ON_PARAMETER_VALUE_CHANGED_HOOK | None:
         return self.hooks.get(ParameterHookTypes.PARAMETER_VALUE_CHANGED)
 
     @on_value_changed_hook.setter
-    def on_value_changed_hook(self, hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK]) -> None:
+    def on_value_changed_hook(self, hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None) -> None:
         self._hooks[ParameterHookTypes.PARAMETER_VALUE_CHANGED] = hook
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
@@ -216,10 +216,10 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
         description: str = '',
         default_value: TT = UNSET,
         default_factory: Callable[[], TT] = UNSET,
-        validator: Optional[Validator[TS, TT]] = None,
-        serializer: Optional[Serializer[TT]] = None,
-        deserializer: Optional[Deserializer[TT]] = None,
-        on_value_changed_hook: Optional[ON_PARAMETER_VALUE_CHANGED_HOOK] = None,
+        validator: Validator[TS, TT] | None = None,
+        serializer: Serializer[TT] | None = None,
+        deserializer: Deserializer[TT] | None = None,
+        on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
