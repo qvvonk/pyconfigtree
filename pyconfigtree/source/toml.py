@@ -14,8 +14,7 @@ class TOMLSource(ConfigSource):
 
     async def load(self) -> dict[str, Any]:
         with open(self._path, 'rb') as f:
-            data = tomllib.load(f)
-        return data
+            return tomllib.load(f)
 
     async def save(self, data: NodeInfo) -> None:
         dicted = self.node_info_to_dict(data)

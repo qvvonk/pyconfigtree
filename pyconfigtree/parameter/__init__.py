@@ -1,6 +1,9 @@
-from .base import Parameter, MutableParameter
-from .int_parameter import IntParameter
-from .bool_parameter import BoolParameter
-from .float_parameter import FloatParameter
-from .choice_parameter import Choice
-from .string_parameter import StringParameter
+from .base import (
+    Parameter as Parameter,
+    MutableParameter as MutableParameter,
+)
+from .int_parameter import IntParameter as IntParameter
+from .bool_parameter import BoolParameter as BoolParameter
+from .float_parameter import FloatParameter as FloatParameter
+from .choice_parameter import Choice as Choice
+from .string_parameter import StringParameter as StringParameter

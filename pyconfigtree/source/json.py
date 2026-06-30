@@ -12,8 +12,7 @@ class JSONSource(ConfigSource):
 
     async def load(self) -> dict[str, Any]:
         with open(self._path, 'r', encoding=self.encoding) as f:
-            data = json.load(f)
-        return data
+            return json.load(f)
 
     async def save(self, data: NodeInfo) -> None:
         dicted = self.node_info_to_dict(data)
