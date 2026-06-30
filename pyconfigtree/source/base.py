@@ -17,7 +17,7 @@ class ConfigSource(ABC):
     async def load(self) -> dict[str, Any]: ...
 
     @abstractmethod
-    async def save(self, data: 'NodeInfo'): ...
+    async def save(self, data: 'NodeInfo') -> None: ...
 
     @abstractmethod
     def __eq__(self, other: Any) -> bool: ...
@@ -37,6 +37,6 @@ class NodeInfo:
     subnodes: dict[str, 'NodeInfo'] = field(default_factory=dict)
     value: ALLOWED_TYPES | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.type is NodeType.CONTAINER and self.value is not None:
             raise ValueError(f'Node of type {self.type} cannot contain value.')

@@ -7,9 +7,12 @@ __all__ = [
     'MutableParameter',
     'TypedParameter',
     'ON_PARAMETER_VALUE_CHANGED_HOOK',
+    '_MutableParameterKwargs'
 ]
 
-from typing import Any, Self, Type, Generic, TypeVar, Protocol, TypeAlias, cast
+
+from typing import Any, Type, Generic, TypeVar, Protocol, TypeAlias
+from typing_extensions import TypedDict, NotRequired, Self, Unpack
 from enum import Enum, auto
 from asyncio import Lock
 from collections.abc import Callable, Awaitable
@@ -79,6 +82,20 @@ class Parameter(Node, Generic[T]):
         return
 
 
+_KT = TypeVar('_KT')  # Parameter value type
+_KP = TypeVar('_KP')  # Parameter class
+class _MutableParameterKwargs(TypedDict, Generic[_KT, _KP]):
+    name: NotRequired[str]
+    description: NotRequired[str]
+    value: NotRequired[_KT | None]
+    default_value: NotRequired[_KT | None]
+    default_factory: NotRequired[Callable[[], _KT] | None]
+    validator: NotRequired[Validator[_KP, _KT] | None]
+    serializer: Serializer[_KT]
+    deserializer: Deserializer[_KT]
+    on_value_changed_hook: NotRequired[ON_PARAMETER_VALUE_CHANGED_HOOK | None]
+
+
 class MutableParameter(Parameter[T], Generic[T]):
     def __init__(
         self,
@@ -86,17 +103,17 @@ class MutableParameter(Parameter[T], Generic[T]):
         *,
         name: str = '',
         description: str = '',
-        value: T = cast(T, ...),
-        default_value: T = cast(T, ...),
+        value: T | None = None,
+        default_value: T | None = None,
         default_factory: Callable[[], T] | None = None,
         validator: Validator[Self, T] | None = None,
         serializer: Serializer[T],
         deserializer: Deserializer[T],
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
     ) -> None:
-        if value is Ellipsis and default_value is None:
+        if value is None and default_value is None:
             raise ValueError('Either `default_value` or `default_factory` must be specified.')
-        if value is not Ellipsis and default_factory is not None:
+        if value is not None and default_factory is not None:
             raise ValueError(
                 'Either `default_value` or `default_factory` must be specified, '
                 'but not both of them.',
@@ -111,7 +128,7 @@ class MutableParameter(Parameter[T], Generic[T]):
 
         super().__init__(
             node_id=node_id,
-            value=value if value is not Ellipsis else self.default_value,
+            value=value if value is not None else self.default_value,
             name=name,
             description=description,
         )
@@ -207,7 +224,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
     _DEFAULT_DESERIALIZER: Deserializer[TT]
     _VALUE_TYPE: Type[TT]
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         if cls is TypedParameter:
             return
 
@@ -219,32 +236,8 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
             if i not in cls.__dict__:
                 raise TypeError(f'`{cls.__name__}` must define `{i}`.')
 
-    def __init__(
-        self,
-        node_id: str,
-        *,
-        name: str = '',
-        description: str = '',
-        value: TT = cast(TT, ...),
-        default_value: TT = cast(TT, ...),
-        default_factory: Callable[[], TT] | None = None,
-        validator: Validator[Self, TT] | None = None,
-        serializer: Serializer[TT] | None = None,
-        deserializer: Deserializer[TT] | None = None,
-        on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
-    ) -> None:
-        super().__init__(
-            node_id=node_id,
-            name=name,
-            description=description,
-            value=value,
-            default_value=default_value,
-            default_factory=default_factory,
-            serializer=serializer if serializer is not None else self._DEFAULT_SERIALIZER,
-            deserializer=deserializer if deserializer is not None else self._DEFAULT_DESERIALIZER,
-            validator=validator,
-            on_value_changed_hook=on_value_changed_hook,
-        )
+    def __init__(self, node_id: str, **kwargs: Unpack[_MutableParameterKwargs[TT, Self]]) -> None:
+        super().__init__(node_id=node_id, **kwargs)
 
     def deserialize(self, value: Any) -> TT:
         res = super().deserialize(value)
