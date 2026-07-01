@@ -14,7 +14,7 @@ build-backend = "hatchling.build"
 
 [project.optional-dependencies]
 toml = [
-    "tomli-w>=1.0.0;",
+    "tomli-w>=1.0.0",
 ]
 
 [dependency-groups]
