@@ -5,11 +5,11 @@ from typing import Generic, TypeVar
 from json import JSONDecodeError
 from collections.abc import Callable, Iterable, Awaitable
 
-from typing_extensions import Unpack, Self
+from typing_extensions import Self, Unpack
 
 from pyconfigtree.exceptions import DeserializationError
 
-from .base import ALLOWED_TYPES, _TypedParameterKwargs, ParameterHookTypes
+from .base import ALLOWED_TYPES, ParameterHookTypes, _TypedParameterKwargs
 
 
 __all__ = [
@@ -95,11 +95,7 @@ class ListParameter(TypedParameter[list[T]], Generic[T]):
             await self.run_hook(ParameterHookTypes.PARAMETER_VALUE_CHANGED, self)
 
     async def pop_item(
-        self,
-        index: int,
-        validate: bool = True,
-        run_hook: bool = True,
-        save: bool = True
+        self, index: int, validate: bool = True, run_hook: bool = True, save: bool = True
     ) -> T | None:
         if index < 0 or index >= len(self.value):
             return None
@@ -119,11 +115,7 @@ class ListParameter(TypedParameter[list[T]], Generic[T]):
         return result
 
     async def remove_item(
-        self,
-        item: T,
-        validate: bool = True,
-        run_hook: bool = True,
-        save: bool = True
+        self, item: T, validate: bool = True, run_hook: bool = True, save: bool = True
     ) -> None:
         if item not in self._value:
             return
