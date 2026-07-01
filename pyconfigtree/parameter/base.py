@@ -16,7 +16,7 @@ from enum import Enum, auto
 from asyncio import Lock
 from collections.abc import Callable, Awaitable
 
-from typing_extensions import Self, Unpack, TypedDict, NotRequired
+from typing_extensions import Self, Unpack, Required, TypedDict, NotRequired
 
 from pyconfigtree.exceptions import ValidationError, DeserializationError
 
@@ -87,16 +87,24 @@ _KT = TypeVar('_KT')  # Parameter value type
 _KP = TypeVar('_KP')  # Parameter class
 
 
-class _MutableParameterKwargs(TypedDict, Generic[_KT, _KP]):
+class _CommonMutableParameterKwargs(TypedDict, Generic[_KT, _KP]):
     name: NotRequired[str]
     description: NotRequired[str]
     value: NotRequired[_KT | None]
     default_value: NotRequired[_KT | None]
     default_factory: NotRequired[Callable[[], _KT] | None]
     validator: NotRequired[Validator[_KP, _KT] | None]
-    serializer: Serializer[_KT]
-    deserializer: Deserializer[_KT]
     on_value_changed_hook: NotRequired[ON_PARAMETER_VALUE_CHANGED_HOOK | None]
+
+
+class _MutableParameterKwargs(_CommonMutableParameterKwargs[_KT, _KP], Generic[_KT, _KP]):
+    serializer: Required[Serializer[_KT]]
+    deserializer: Required[Deserializer[_KT]]
+
+
+class _TypedParameterKwargs(_CommonMutableParameterKwargs[_KT, _KP], Generic[_KT, _KP]):
+    serializer: NotRequired[Serializer[_KT]]
+    deserializer: NotRequired[Deserializer[_KT]]
 
 
 class MutableParameter(Parameter[T], Generic[T]):
@@ -222,9 +230,6 @@ class MutableParameter(Parameter[T], Generic[T]):
 TT = TypeVar('TT')
 
 
-class _TypedParameterKwargs(_MutableParameterKwargs[_KT, _KP], Generic[_KT, _KP]): ...
-
-
 class TypedParameter(MutableParameter[TT], Generic[TT]):
     _DEFAULT_SERIALIZER: Serializer[TT]
     _DEFAULT_DESERIALIZER: Deserializer[TT]
@@ -242,7 +247,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
             if i not in cls.__dict__:
                 raise TypeError(f'`{cls.__name__}` must define `{i}`.')
 
-    def __init__(self, node_id: str, **kwargs: Unpack[_MutableParameterKwargs[TT, Self]]) -> None:
+    def __init__(self, node_id: str, **kwargs: Unpack[_TypedParameterKwargs[TT, Self]]) -> None:
         super().__init__(node_id=node_id, **kwargs)
 
     def deserialize(self, value: Any) -> TT:
