@@ -26,6 +26,9 @@ from pyconfigtree.exceptions import SerializationError
 from .base import TypedParameter
 
 
+SIMPLE_TYPES = (int, str, float, bool)
+
+
 def list_serializer(value: list[Any]) -> list[ALLOWED_TYPES]:
     result: list[ALLOWED_TYPES] = []
     for i in value:
@@ -81,6 +84,9 @@ class ListParameter(TypedParameter[list[T]], Generic[T]):
         run_hook: bool = True,
         save: bool = True,
     ) -> None:
+        if not isinstance(item, SIMPLE_TYPES):
+            raise ValueError('Only simple types can be added to a list parameter.')
+
         async with self._changing_lock:
             if deserialize:
                 item = await self.deserialize_item(item)
