@@ -5,7 +5,7 @@ from typing import Generic, TypeVar, Iterable
 from json import JSONDecodeError
 from collections.abc import Callable
 
-from typing_extensions import Unpack
+from typing_extensions import Unpack, Self
 
 from pyconfigtree.exceptions import DeserializationError
 
@@ -27,7 +27,7 @@ from .base import TypedParameter
 
 
 def list_serializer(value: list[Any]) -> list[ALLOWED_TYPES]:
-    result = []
+    result: list[ALLOWED_TYPES] = []
     for i in value:
         if isinstance(i, (int, str, float, bool)):
             result.append(i)
@@ -64,9 +64,9 @@ class ListParameter(TypedParameter[list[T]], Generic[T]):
         node_id: str,
         *,
         item_deserializer: Callable[[Any], T] | None = None,
-        add_item_validator: Callable[[T], None] | None = None,
+        add_item_validator: Callable[[T, Self], None] | None = None,
         remove_item_validator: Callable[[T], None] | None = None,
-        **kwargs: Unpack[_TypedParameterKwargs[list[T], ListParameter[list[T]]]],
+        **kwargs: Unpack[_TypedParameterKwargs[list[T], Self]],
     ) -> None:
         super().__init__(node_id=node_id, **kwargs)
         self.item_deserializer = item_deserializer

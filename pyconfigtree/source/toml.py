@@ -2,7 +2,7 @@ from typing import Any
 from pathlib import Path
 
 import tomli_w
-import tomllib
+import tomllib  # type: ignore
 
 from .base import NodeInfo, NodeType, ConfigSource
 
@@ -14,7 +14,7 @@ class TOMLSource(ConfigSource):
 
     async def load(self) -> dict[str, Any]:
         with open(self._path, 'rb') as f:
-            return tomllib.load(f)
+            return tomllib.load(f)  # type: ignore
 
     async def save(self, data: NodeInfo) -> None:
         dicted = self.node_info_to_dict(data)
