@@ -60,8 +60,9 @@ class Parameter(Node, Generic[T]):
         value: T,
         name: str = '',
         description: str = '',
+        flags: set[Any] | None = None,
     ) -> None:
-        super().__init__(node_id=node_id, name=name, description=description)
+        super().__init__(node_id=node_id, name=name, description=description, flags=flags)
         self._value = value
 
     @property
@@ -90,6 +91,7 @@ class _CommonMutableParameterKwargs(TypedDict, Generic[_PARAM_CLASS, _VALUE_TYPE
     default_factory: NotRequired[Callable[[], _VALUE_TYPE] | None]
     validator: NotRequired[Validator[_PARAM_CLASS, _VALUE_TYPE] | None]
     on_value_changed_hook: NotRequired[ON_PARAMETER_VALUE_CHANGED_HOOK | None]
+    flags: NotRequired[set[Any] | None]
 
 
 class _MutableParameterKwargs(
@@ -120,6 +122,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         serializer: Serializer[Self, T],
         deserializer: Deserializer[Self, T],
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
+        flags: set[Any] | None = None,
     ) -> None:
         if value is None and default_value is None:
             raise ValueError('Either `default_value` or `default_factory` must be specified.')
@@ -141,6 +144,7 @@ class MutableParameter(Parameter[T], Generic[T]):
             value=value if value is not None else self.default_value,
             name=name,
             description=description,
+            flags=flags,
         )
 
         self.on_value_changed_hook = on_value_changed_hook
