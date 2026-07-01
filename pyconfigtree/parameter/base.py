@@ -31,26 +31,21 @@ class ParameterHookTypes(Enum):
     PARAMETER_VALUE_CHANGED = auto()
 
 
-_ST = TypeVar('_ST', contravariant=True)
+_VALUE_contra = TypeVar('_VALUE_contra', contravariant=True)
+_VALUE_co = TypeVar('_VALUE_co', covariant=True)
+_NODE = TypeVar('_NODE', contravariant=True)
 
 
-class Serializer(Protocol[_ST]):
-    def __call__(self, value: _ST) -> ALLOWED_TYPES: ...
+class Serializer(Protocol[_NODE, _VALUE_contra]):
+    def __call__(self, node: _NODE, value: _VALUE_contra) -> ALLOWED_TYPES: ...
 
 
-_DT = TypeVar('_DT', covariant=True)
+class Deserializer(Protocol[_NODE, _VALUE_co]):
+    def __call__(self, node: _NODE, value: ALLOWED_TYPES) -> _VALUE_co: ...
 
 
-class Deserializer(Protocol[_DT]):
-    def __call__(self, value: ALLOWED_TYPES) -> _DT: ...
-
-
-_VT = TypeVar('_VT', contravariant=True)
-_VS = TypeVar('_VS', contravariant=True)
-
-
-class Validator(Protocol[_VS, _VT]):
-    async def __call__(self, node: _VS, value: _VT) -> None: ...
+class Validator(Protocol[_NODE, _VALUE_contra]):
+    async def __call__(self, node: _NODE, value: _VALUE_contra) -> None: ...
 
 
 T = TypeVar('T')
@@ -83,28 +78,32 @@ class Parameter(Node, Generic[T]):
         return
 
 
-_KT = TypeVar('_KT')  # Parameter value type
-_KP = TypeVar('_KP')  # Parameter class
+_VALUE_TYPE = TypeVar('_VALUE_TYPE')  # Parameter value type
+_PARAM_CLASS = TypeVar('_PARAM_CLASS')  # Parameter class
 
 
-class _CommonMutableParameterKwargs(TypedDict, Generic[_KT, _KP]):
+class _CommonMutableParameterKwargs(TypedDict, Generic[_PARAM_CLASS, _VALUE_TYPE]):
     name: NotRequired[str]
     description: NotRequired[str]
-    value: NotRequired[_KT | None]
-    default_value: NotRequired[_KT | None]
-    default_factory: NotRequired[Callable[[], _KT] | None]
-    validator: NotRequired[Validator[_KP, _KT] | None]
+    value: NotRequired[_VALUE_TYPE | None]
+    default_value: NotRequired[_VALUE_TYPE | None]
+    default_factory: NotRequired[Callable[[], _VALUE_TYPE] | None]
+    validator: NotRequired[Validator[_PARAM_CLASS, _VALUE_TYPE] | None]
     on_value_changed_hook: NotRequired[ON_PARAMETER_VALUE_CHANGED_HOOK | None]
 
 
-class _MutableParameterKwargs(_CommonMutableParameterKwargs[_KT, _KP], Generic[_KT, _KP]):
-    serializer: Required[Serializer[_KT]]
-    deserializer: Required[Deserializer[_KT]]
+class _MutableParameterKwargs(
+    _CommonMutableParameterKwargs[_PARAM_CLASS, _VALUE_TYPE], Generic[_PARAM_CLASS, _VALUE_TYPE]
+):
+    serializer: Required[Serializer[_PARAM_CLASS, _VALUE_TYPE]]
+    deserializer: Required[Deserializer[_PARAM_CLASS, _VALUE_TYPE]]
 
 
-class _TypedParameterKwargs(_CommonMutableParameterKwargs[_KT, _KP], Generic[_KT, _KP]):
-    serializer: NotRequired[Serializer[_KT]]
-    deserializer: NotRequired[Deserializer[_KT]]
+class _TypedParameterKwargs(
+    _CommonMutableParameterKwargs[_PARAM_CLASS, _VALUE_TYPE], Generic[_PARAM_CLASS, _VALUE_TYPE]
+):
+    serializer: NotRequired[Serializer[_PARAM_CLASS, _VALUE_TYPE]]
+    deserializer: NotRequired[Deserializer[_PARAM_CLASS, _VALUE_TYPE]]
 
 
 class MutableParameter(Parameter[T], Generic[T]):
@@ -118,8 +117,8 @@ class MutableParameter(Parameter[T], Generic[T]):
         default_value: T | None = None,
         default_factory: Callable[[], T] | None = None,
         validator: Validator[Self, T] | None = None,
-        serializer: Serializer[T],
-        deserializer: Deserializer[T],
+        serializer: Serializer[Self, T],
+        deserializer: Deserializer[Self, T],
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
     ) -> None:
         if value is None and default_value is None:
@@ -153,11 +152,11 @@ class MutableParameter(Parameter[T], Generic[T]):
         return self._default_value
 
     @property
-    def serializer(self) -> Serializer[T]:
+    def serializer(self) -> Serializer[Self, T]:
         return self._serializer
 
     @property
-    def deserializer(self) -> Deserializer[T]:
+    def deserializer(self) -> Deserializer[Self, T]:
         return self._deserializer
 
     @property
@@ -217,10 +216,10 @@ class MutableParameter(Parameter[T], Generic[T]):
             await self.run_hook(ParameterHookTypes.PARAMETER_VALUE_CHANGED, self)
 
     def serialize(self) -> ALLOWED_TYPES:
-        return self._serializer(self.value)
+        return self.serializer(self, self.value)
 
     def deserialize(self, value: Any) -> T:
-        return self.deserializer(value)
+        return self.deserializer(self, value)
 
     async def validate(self, value: T) -> None:
         if self.validator is not None:
@@ -231,8 +230,8 @@ TT = TypeVar('TT')
 
 
 class TypedParameter(MutableParameter[TT], Generic[TT]):
-    _DEFAULT_SERIALIZER: Serializer[TT]
-    _DEFAULT_DESERIALIZER: Deserializer[TT]
+    _DEFAULT_SERIALIZER: Serializer[Self, TT]
+    _DEFAULT_DESERIALIZER: Deserializer[Self, TT]
     _VALUE_TYPE: Type[TT]
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
@@ -247,7 +246,7 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
             if i not in cls.__dict__:
                 raise TypeError(f'`{cls.__name__}` must define `{i}`.')
 
-    def __init__(self, node_id: str, **kwargs: Unpack[_TypedParameterKwargs[TT, Self]]) -> None:
+    def __init__(self, node_id: str, **kwargs: Unpack[_TypedParameterKwargs[Self, TT]]) -> None:
         super().__init__(node_id=node_id, **kwargs)
 
     def deserialize(self, value: Any) -> TT:

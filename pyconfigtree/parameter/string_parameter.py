@@ -13,11 +13,11 @@ from typing import Any
 from .base import TypedParameter
 
 
-def str_serializer(value: str) -> str:
+def str_serializer(node: StringParameter, value: str) -> str:
     return value
 
 
-def str_deserializer(value: Any) -> str:
+def str_deserializer(node: StringParameter, value: Any) -> str:
     return str(value)
 
 

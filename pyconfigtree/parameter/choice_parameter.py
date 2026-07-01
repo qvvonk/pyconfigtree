@@ -29,13 +29,18 @@ class Choice(Generic[T]):
         return self.id
 
 
-def choice_serializer(value: Choice[Any]) -> str:
+def choice_serializer(node: 'ChoiceParameter[Any]', value: Choice[Any]) -> str:
     return value.id
+
+
+def choice_deserializer(node: 'ChoiceParameter[Any]', value: Any) -> Choice[Any]:
+    value = str(value)
+    return node.choices.get(value, node.choices[node.fallback_choice_id])
 
 
 class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
     _DEFAULT_SERIALIZER = choice_serializer
-    _DEFAULT_DESERIALIZER = ...
+    _DEFAULT_DESERIALIZER = choice_deserializer
     _VALUE_TYPE = Choice
 
     def __init__(
@@ -44,7 +49,7 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
         *,
         choices: Sequence[Choice[T]],
         fallback_choice_id: str,
-        **kwargs: Unpack[_MutableParameterKwargs[Choice[T], Self]],
+        **kwargs: Unpack[_MutableParameterKwargs[Self, Choice[T]]],
     ) -> None:
         if not choices:
             raise ValueError('At least 1 choice must be provided.')
@@ -59,7 +64,6 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
             raise ValueError('Fallback choice ID does not exists.')
         self._fallback_choice_id = fallback_choice_id
 
-        self._DEFAULT_DESERIALIZER = self._default_deserializer
         super().__init__(node_id=node_id, **kwargs)
 
     @property
@@ -69,10 +73,6 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
     @property
     def fallback_choice_id(self) -> str:
         return self._fallback_choice_id
-
-    def _default_deserializer(self, value: Any) -> Choice[T]:
-        value = str(value)
-        return self.choices.get(value, self.choices[self.fallback_choice_id])
 
     async def set_value(
         self,

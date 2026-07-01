@@ -13,11 +13,11 @@ from typing import Any
 from .base import TypedParameter
 
 
-def bool_serializer(value: bool) -> bool:
+def bool_serializer(node: 'BoolParameter', value: bool) -> bool:
     return value
 
 
-def bool_deserializer(value: Any) -> bool:
+def bool_deserializer(node: 'BoolParameter', value: Any) -> bool:
     return bool(value)
 
 

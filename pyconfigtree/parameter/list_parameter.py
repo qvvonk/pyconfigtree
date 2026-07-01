@@ -66,7 +66,7 @@ class ListParameter(TypedParameter[list[T]], Generic[T]):
         item_deserializer: Callable[[Any], T] | None = None,
         add_item_validator: Callable[[T, Self], Awaitable[None]] | None = None,
         remove_item_validator: Callable[[T, Self], Awaitable[None]] | None = None,
-        **kwargs: Unpack[_TypedParameterKwargs[list[T], Self]],
+        **kwargs: Unpack[_TypedParameterKwargs[Self, list[T]]],
     ) -> None:
         super().__init__(node_id=node_id, **kwargs)
         self.item_deserializer = item_deserializer
