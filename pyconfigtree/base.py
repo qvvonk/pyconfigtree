@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, TypeVar, TypeAlias, overload
 from enum import Enum, auto
 from types import MappingProxyType
-from collections.abc import Mapping, Callable, Sequence, Awaitable, Generator
+from collections.abc import Mapping, Callable, Sequence, Awaitable, Generator, Iterable
 
 from .source import ConfigSource
 from .exceptions import LeafNodeError, NodeLoopError, NoSourceError, NodeDuplicateError
@@ -271,3 +271,14 @@ class Node:
             await hook(*args, **kwargs)
         if self.parent is not None:
             await self.parent.run_hook(hook_identifier, *args, **kwargs)
+
+    def get_node(self, path: Iterable[str]) -> Node | None:
+        if not path:
+            return None
+
+        node = self
+        for i in path:
+            if i not in node.subnodes:
+                return None
+            node = node.subnodes[i]
+        return node
