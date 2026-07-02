@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar, TypeAlias, overload
+from typing import Any, TypeVar, TypeAlias, overload, Literal
 from enum import Enum, auto
 from types import MappingProxyType
 from collections.abc import Mapping, Callable, Sequence, Awaitable, Generator, Iterable
@@ -272,13 +272,24 @@ class Node:
         if self.parent is not None:
             await self.parent.run_hook(hook_identifier, *args, **kwargs)
 
-    def get_node(self, path: Iterable[str]) -> Node | None:
+    @overload
+    def get_node(self, path: Iterable[str], _raise: Literal[True] = True) -> Node: ...
+
+    @overload
+    def get_node(self, path: Iterable[str], _raise: Literal[False]) -> Node | None: ...
+
+    def get_node(self, path: Iterable[str], _raise: bool = True) -> Node | None:
         if not path:
             return None
 
         node = self
         for i in path:
             if i not in node.subnodes:
+                if _raise:
+                    raise LookupError(
+                        f'Cannot find node `{path}` in `{self.path}`. '
+                        f'Node {node.path} does not contain subnode with id `{i}`.'
+                    )
                 return None
             node = node.subnodes[i]
         return node
