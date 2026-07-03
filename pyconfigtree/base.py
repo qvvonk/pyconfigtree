@@ -278,6 +278,9 @@ class Node:
     @overload
     def get_node(self, path: Iterable[str], _raise: Literal[False]) -> Node | None: ...
 
+    @overload
+    def get_node(self, path: Iterable[str], _raise: bool = True) -> Node | None: ...
+
     def get_node(self, path: Iterable[str], _raise: bool = True) -> Node | None:
         if not path:
             return None
