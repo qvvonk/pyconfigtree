@@ -124,9 +124,9 @@ class MutableParameter(Parameter[T], Generic[T]):
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
         flags: set[Any] | None = None,
     ) -> None:
-        if value is None and default_value is None:
+        if default_value is None and default_value is None:
             raise ValueError('Either `default_value` or `default_factory` must be specified.')
-        if value is not None and default_factory is not None:
+        if default_value is not None and default_factory is not None:
             raise ValueError(
                 'Either `default_value` or `default_factory` must be specified, '
                 'but not both of them.',
