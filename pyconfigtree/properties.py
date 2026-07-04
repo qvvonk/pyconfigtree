@@ -1,3 +1,6 @@
+__all__ = ['Properties']
+
+
 from .base import Node
 from .parameter import Parameter
 
