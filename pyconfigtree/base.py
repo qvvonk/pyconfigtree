@@ -149,7 +149,7 @@ class Node:
                 return id
             index += 1
 
-    def attach_node(self, node: T, virtual: bool = False) -> T:
+    def attach_node(self, node: T, *, virtual: bool = False) -> T:
         self.check_can_attach_node(node, virtual=virtual)
 
         if virtual:
@@ -161,7 +161,7 @@ class Node:
             node._parent = self
         return node
 
-    async def attach_node_with_hooks(self, node: T, virtual: bool = False) -> T:
+    async def attach_node_with_hooks(self, node: T, *, virtual: bool = False) -> T:
         node = self.attach_node(node, virtual=virtual)
         if not virtual:
             await self.run_hook(BaseHookTypes.ON_NODE_ATTACHED, node, self)
