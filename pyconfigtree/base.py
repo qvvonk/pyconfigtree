@@ -28,6 +28,7 @@ def leaf(cls: type[T]) -> type[T]:
 
 def container(cls: type[T]) -> type[T]:
     cls._allow_children = True
+    return cls
 
 
 class Node:
