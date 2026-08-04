@@ -20,7 +20,7 @@ from typing_extensions import Self, Unpack, Required, TypedDict, NotRequired
 
 from pyconfigtree.exceptions import ValidationError, DeserializationError
 
-from ..base import Node
+from pyconfigtree.base import Node, leaf
 from ..source.base import ALLOWED_TYPES, NodeInfo, NodeType
 
 
@@ -51,9 +51,8 @@ class Validator(Protocol[_NODE, _VALUE_contra]):
 T = TypeVar('T')
 
 
+@leaf
 class Parameter(Node, Generic[T]):
-    _allow_children = False
-
     def __init__(
         self,
         node_id: str,
