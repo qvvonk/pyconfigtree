@@ -184,9 +184,9 @@ class Node:
     def detach_node(self, node: T) -> T: ...
 
     def detach_node(self, node: T | str) -> T | Node:
-        node = self[node]
-        node_id = self.get_subnode_id(node)
-        virtual = node_id in self.virtual_subnode_ids
+        node = self[node]                               # todo
+        node_id = self.get_subnode_id(node)             # todo
+        virtual = node_id in self.virtual_subnode_ids   # todo
 
         detached_node = self._subnodes.pop(node_id)
         if virtual:
@@ -202,8 +202,13 @@ class Node:
     async def detach_node_with_hooks(self, node: T) -> T: ...
 
     async def detach_node_with_hooks(self, node: T | str) -> T | Node:
+        node = self[node]                               # todo
+        node_id = self.get_subnode_id(node)             # todo
+        virtual = node_id in self.virtual_subnode_ids   # todo
+
         node = self.detach_node(node)
-        await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node, self)
+        if not virtual:
+            await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node, self)
         return node
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
