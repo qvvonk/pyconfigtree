@@ -206,7 +206,7 @@ class Node:
             type=NodeType.CONTAINER,
             subnodes={
                 k: i.get_node_info(same_source_only=same_source_only)
-                for k, i in subnodes
+                for k, i in subnodes.values()
                 if (same_source_only and self.inherited_source == i.inherited_source)
                 or not same_source_only
             },
@@ -292,7 +292,7 @@ class Node:
                 if i.source is not None:
                     return await i.save(same_source_only=same_source_only)
         else:
-            node_info = self.get_node_info()
+            node_info = self.get_node_info(same_source_only=same_source_only)
             return await self.source.save(data=node_info)
 
     async def load(self, validate: bool = True, run_hook: bool = False) -> None:
@@ -343,12 +343,12 @@ class Node:
         node = self
         for i in path:
             if i not in node.subnodes:
-                if _raise:
-                    raise LookupError(
-                        f'Cannot find node `{path}` in `{self.path}`. '
-                        f'Node {node.path} does not contain subnode with id `{i}`.'
-                    )
-                return None
+                if not _raise:
+                    return None
+                raise LookupError(
+                    f'Cannot find node `{path}` in `{self.path}`. '
+                    f'Node {node.path} does not contain subnode with id `{i}`.'
+                )
             node = node.subnodes[i]
         return node
 
@@ -365,6 +365,7 @@ class Node:
         if isinstance(item, str):
             return self.subnodes[item]
 
-        if item not in set(self.subnodes.values()):
-            raise KeyError(f'Node {self.path} does not contain subnode {item!r}.')
-        return item
+        for i in self.subnodes.values():
+            if i is item:
+                return item
+        raise KeyError(f'Node {self.path} does not contain subnode {item!r}.')
