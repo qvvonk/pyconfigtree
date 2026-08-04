@@ -22,7 +22,7 @@ class Choice(Generic[T]):
         if not self.id:
             raise ValueError('Choice ID cannot be empty.')
 
-        if not isinstance(id, str):
+        if not isinstance(self.id, str):
             raise TypeError('Choice ID must be a string.')
 
     def __str__(self) -> str:
