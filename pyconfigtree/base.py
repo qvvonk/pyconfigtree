@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar, TypeAlias, overload, Literal
+from typing import Any, TypeVar, TypeAlias, overload, Literal, ClassVar
 from enum import Enum, auto
 from types import MappingProxyType
 from collections.abc import Mapping, Callable, Sequence, Awaitable, Generator, Iterable
@@ -22,7 +22,7 @@ class BaseHookTypes(Enum):
 
 
 class Node:
-    _allow_children: bool = True
+    _allow_children: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -38,8 +38,10 @@ class Node:
         self._name = name
         self._description = description
         self._parent: Node | None = None
+
         self._subnodes: dict[str, Node] = {}
         self._subnodes_proxy = MappingProxyType(self._subnodes)
+        self._virtual_subnode_ids: set[str] = set()
         self._source = source
         self._flags = flags or set()
 
@@ -76,6 +78,18 @@ class Node:
         return self._subnodes_proxy
 
     @property
+    def persistent_subnodes(self) -> dict[str, Node]:
+        return {k: v for k, v in self.subnodes.items() if k not in self.virtual_subnode_ids}
+
+    @property
+    def virtual_subnodes(self) -> dict[str, Node]:
+        return {k: v for k, v in self._subnodes.items() if k in self._virtual_subnode_ids}
+
+    @property
+    def virtual_subnode_ids(self) -> frozenset[str]:
+        return frozenset(self._virtual_subnode_ids)
+
+    @property
     def root(self) -> Node:
         node = self
         while node.parent is not None:
@@ -84,8 +98,7 @@ class Node:
 
     @property
     def path(self) -> tuple[str, ...]:
-        path = [i.id for i in self.chain_to_root()]
-        path.reverse()
+        path = reversed([i.id for i in self.chain_to_root()])
         return tuple(path)
 
     @property
@@ -116,46 +129,76 @@ class Node:
     def on_node_detached_hook(self, hook: ON_NODE_DETACHED_HOOK | None) -> None:
         self._hooks[BaseHookTypes.ON_NODE_DETACHED] = hook
 
-    def _attach_node(self, node: T) -> T:
-        self.check_can_attach_node(node)
-        node._parent = self
-        self._subnodes[node.id] = node
+    def get_subnode_id(self, node: Node) -> str | None:
+        if node.id in self.subnodes and self.subnodes[node.id] is node:
+            return node.id
+
+        for k in self._virtual_subnode_ids:
+            if self.subnodes[k] is node:
+                return k
+        else:
+            return None
+
+    def _gen_virtual_node_id(self, node) -> str:
+        id_template = f'__virtual_{node.id}_{{index}}__'
+
+        index = 0
+        while True:
+            id = id_template.format(index=index)
+            if id not in self._subnodes:
+                return id
+            index += 1
+
+    def attach_node(self, node: T, virtual: bool = False) -> T:
+        self.check_can_attach_node(node, virtual=virtual)
+
+        if virtual:
+            node_id = self._gen_virtual_node_id(node)
+            self._subnodes[node_id] = node
+            self._virtual_subnode_ids.add(node_id)
+        else:
+            self._subnodes[node.id] = node
+            node._parent = self
         return node
 
-    async def attach_node(self, node: T, run_hook: bool = True) -> T:
-        node = self._attach_node(node)
-        if run_hook:
+    async def attach_node_with_hooks(self, node: T, virtual: bool = False) -> T:
+        node = self.attach_node(node, virtual=virtual)
+        if not virtual:
             await self.run_hook(BaseHookTypes.ON_NODE_ATTACHED, node, self)
         return node
 
     @overload
-    def _detach_node(self, node: str) -> Node: ...
+    def detach_node(self, node: str) -> Node: ...
 
     @overload
-    def _detach_node(self, node: T) -> T: ...
+    def detach_node(self, node: T) -> T: ...
 
-    def _detach_node(self, node: T | str) -> T | Node:
-        node_id = node if isinstance(node, str) else node.id
-        if node_id not in self.subnodes:
-            raise KeyError(f'Node {self.path} has no subnode with id {node_id}.')
+    def detach_node(self, node: T | str) -> T | Node:
+        node = self[node]
+        node_id = self.get_subnode_id(node)
+        virtual = node_id in self.virtual_subnode_ids
 
         detached_node = self._subnodes.pop(node_id)
-        detached_node._parent = None
+        if virtual:
+            self._virtual_subnode_ids.discard(node_id)
+        else:
+            detached_node._parent = None
         return detached_node
 
     @overload
-    async def detach_node(self, node: str, run_hook: bool = True) -> Node: ...
+    async def detach_node_with_hooks(self, node: str) -> Node: ...
 
     @overload
-    async def detach_node(self, node: T, run_hook: bool = True) -> T: ...
+    async def detach_node_with_hooks(self, node: T) -> T: ...
 
-    async def detach_node(self, node: T | str, run_hook: bool = True) -> T | Node:
-        detached_node = self._detach_node(node)
-        if run_hook:
-            await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, detached_node, self)
-        return detached_node
+    async def detach_node_with_hooks(self, node: T | str) -> T | Node:
+        node = self.detach_node(node)
+        await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node, self)
+        return node
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
+        subnodes = self.persistent_subnodes
+
         return NodeInfo(
             id=self.id,
             name=self.name,
@@ -163,31 +206,41 @@ class Node:
             type=NodeType.CONTAINER,
             subnodes={
                 k: i.get_node_info(same_source_only=same_source_only)
-                for k, i in self.subnodes.items()
+                for k, i in subnodes
                 if (same_source_only and self.inherited_source == i.inherited_source)
                 or not same_source_only
             },
         )
 
-    def check_can_be_attached(self) -> None:
-        if self._parent is not None:
-            raise RuntimeError(
-                f'Node {self.path} already has a parent and cannot be attached to another node.',
-            )
+    def check_can_be_attached(self, virtual: bool = False) -> None:
+        if not virtual:
+            if self._parent is not None:
+                raise RuntimeError(
+                    f'Node {self.path} already has a parent and '
+                    f'cannot be attached to another node.',
+                )
 
-    def check_can_attach_node(self, node: Node) -> None:
+    def check_can_attach_node(self, node: Node, virtual: bool = False) -> None:
         if not self._allow_children:
             raise LeafNodeError(f'Node of type {type(self)} cannot contain subnodes.')
 
-        node.check_can_be_attached()
+        node.check_can_be_attached(virtual=virtual)
 
-        if node is self:
-            raise NodeLoopError('Node cannot be attached to itself.')
+        if not virtual:
+            if node is self:
+                raise NodeLoopError('Node cannot be attached to itself.')
 
-        if node.id in self.subnodes:
-            raise NodeDuplicateError(
-                f'Node {self.path} already contains a subnode with id {node.id}.',
-            )
+            if node.id in self.subnodes:
+                raise NodeDuplicateError(
+                    f'Node {self.path} already contains a subnode with id {node.id}.',
+                )
+        else:
+            id = self.get_subnode_id(node)
+            if id:
+                raise NodeDuplicateError(
+                    f'Node {self.path} already contains a subnode {node} with id {id!r}.',
+                )
+            return
 
         for i in node.chain_to_tails():
             if i is self:
@@ -202,7 +255,7 @@ class Node:
 
     def chain_to_tails(self) -> Generator[Node, None, None]:
         yield self
-        for i in self.subnodes.values():
+        for i in self.persistent_subnodes.values():
             yield from i.chain_to_tails()
 
     def is_child_of(self, node: Node | Sequence[str], direct: bool = True) -> bool:
@@ -255,8 +308,10 @@ class Node:
         validate: bool = True,
         run_hook: bool = False,
     ) -> None:
+        persistent_subnodes = self.persistent_subnodes
+
         for k, data in data_dict.items():
-            if k not in self.subnodes:
+            if k not in persistent_subnodes:
                 continue
             node = self.subnodes[k]
             await node.load_from_dict(
@@ -296,3 +351,20 @@ class Node:
                 return None
             node = node.subnodes[i]
         return node
+
+    @overload
+    def __getitem__(self, item: str) -> Node: ...
+
+    @overload
+    def __getitem__(self, item: T) -> T: ...
+
+    def __getitem__(self, item: str | T) -> Node | T:
+        if not isinstance(item, (str, Node)):
+            raise TypeError(f'Item must be an instance of `str` or `Node`.')
+
+        if isinstance(item, str):
+            return self.subnodes[item]
+
+        if item not in set(self.subnodes.values()):
+            raise KeyError(f'Node {self.path} does not contain subnode {item!r}.')
+        return item
