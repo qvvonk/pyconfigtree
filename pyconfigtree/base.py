@@ -21,6 +21,15 @@ class BaseHookTypes(Enum):
     ON_NODE_DETACHED = auto()
 
 
+def leaf(cls: type[T]) -> type[T]:
+    cls._allow_children = False
+    return cls
+
+
+def container(cls: type[T]) -> type[T]:
+    cls._allow_children = True
+
+
 class Node:
     _allow_children: ClassVar[bool] = True
 
