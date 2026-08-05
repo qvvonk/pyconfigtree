@@ -7,6 +7,7 @@ __all__ = [
     'container'
 ]
 
+from dataclasses import dataclass
 from typing import Any, TypeVar, TypeAlias, overload, Literal, ClassVar
 from enum import Enum, auto
 from types import MappingProxyType
@@ -38,6 +39,85 @@ def container(cls: type[T]) -> type[T]:
     return cls
 
 
+class SubnodesController:
+    def __init__(self, owner: Node):
+        self.owner = owner
+
+        self.id_to_node: dict[str, Node] = {}
+        self.node_to_id: dict[Node, str] = {}
+        self.virtual_nodes: dict[str, Node] = {}
+        self.persistent_nodes: dict[str, Node] = {}
+
+    def __contains__(self, node: Node | str) -> bool:
+        if not isinstance(node, (Node, str)):
+            return False
+
+        return node in self.id_to_node if isinstance(node, str) else node in self.node_to_id
+
+    @overload
+    def __getitem__(self, node: str) -> Node: ...
+
+    @overload
+    def __getitem__(self, node: T) -> T: ...
+
+    def __getitem__(self, node: str | T) -> Node | T:
+        if isinstance(node, str):
+            if node not in self.id_to_node:
+                raise KeyError(f'{self.owner.path!r} does not contain node with ID {node!r}.')
+            return self.id_to_node[node]
+        else:
+            if node not in self.node_to_id:
+                raise KeyError(f'{self.owner.path!r} does not contain node {node!r}.')
+            return node
+
+    def get_node_id(self, node: Node | str) -> str:
+        return self.node_to_id[self[node]]
+
+    def gen_virtual_node_id(self, node: Node) -> str:
+        id_template = f'__virtual_{node.id}_{{index}}__'
+
+        index = 0
+        while True:
+            id = id_template.format(index=index)
+            if id not in self.id_to_node:
+                return id
+            index += 1
+
+    def add_node(self, node: Node, *, virtual: bool = False) -> None:
+        node_id = node.id if not virtual else self.gen_virtual_node_id(node)
+
+        if node_id in self.id_to_node:
+            raise KeyError(f'Node {self.owner.path!r} already has a subnode with id {node_id!r}.')
+        if node in self.node_to_id:
+            raise KeyError(f'Node {self.owner.path!r} already has a subnode {node!r}.')
+
+        self.id_to_node[node_id] = node
+        self.node_to_id[node] = node_id
+        (self.virtual_nodes if virtual else self.persistent_nodes)[node_id] = node
+
+    @overload
+    def remove_node(self, node: str) -> Node | None: ...
+
+    @overload
+    def remove_node(self, node: T) -> T | None: ...
+
+    def remove_node(self, node: str | T) -> Node | T | None:
+        try:
+            node = self[node]
+        except KeyError:
+            return None
+        node_id = self.get_node_id(node)
+
+        self.node_to_id.pop(node)
+        self.id_to_node.pop(node_id)
+        self.persistent_nodes.pop(node_id, None)
+        self.virtual_nodes.pop(node_id, None)
+        return node
+
+    def is_virtual(self, node: Node | str) -> bool:
+        return self.get_node_id(self[node]) in self.virtual_nodes
+
+
 class Node:
     _allow_children: ClassVar[bool] = True
 
@@ -56,9 +136,10 @@ class Node:
         self._description = description
         self._parent: Node | None = None
 
-        self._subnodes: dict[str, Node] = {}
-        self._subnodes_proxy = MappingProxyType(self._subnodes)
-        self._virtual_subnode_ids: set[str] = set()
+        self._subnodes = SubnodesController(self)
+        self._subnodes_proxy = MappingProxyType(self._subnodes.id_to_node)
+        self._virtual_nodes = MappingProxyType(self._subnodes.virtual_nodes)
+        self._persistent_nodes = MappingProxyType(self._subnodes.persistent_nodes)
         self._source = source
         self._flags = flags or set()
 
@@ -95,16 +176,12 @@ class Node:
         return self._subnodes_proxy
 
     @property
-    def persistent_subnodes(self) -> dict[str, Node]:
-        return {k: v for k, v in self.subnodes.items() if k not in self.virtual_subnode_ids}
+    def persistent_subnodes(self) -> Mapping[str, Node]:
+        return self._persistent_nodes
 
     @property
-    def virtual_subnodes(self) -> dict[str, Node]:
-        return {k: v for k, v in self._subnodes.items() if k in self._virtual_subnode_ids}
-
-    @property
-    def virtual_subnode_ids(self) -> frozenset[str]:
-        return frozenset(self._virtual_subnode_ids)
+    def virtual_subnodes(self) -> Mapping[str, Node]:
+        return self._virtual_nodes
 
     @property
     def root(self) -> Node:
@@ -146,36 +223,9 @@ class Node:
     def on_node_detached_hook(self, hook: ON_NODE_DETACHED_HOOK | None) -> None:
         self._hooks[BaseHookTypes.ON_NODE_DETACHED] = hook
 
-    def get_subnode_id(self, node: Node) -> str | None:
-        if node.id in self.subnodes and self.subnodes[node.id] is node:
-            return node.id
-
-        for k in self._virtual_subnode_ids:
-            if self.subnodes[k] is node:
-                return k
-        else:
-            return None
-
-    def _gen_virtual_node_id(self, node) -> str:
-        id_template = f'__virtual_{node.id}_{{index}}__'
-
-        index = 0
-        while True:
-            id = id_template.format(index=index)
-            if id not in self._subnodes:
-                return id
-            index += 1
-
     def attach_node(self, node: T, *, virtual: bool = False) -> T:
         self.check_can_attach_node(node, virtual=virtual)
-
-        if virtual:
-            node_id = self._gen_virtual_node_id(node)
-            self._subnodes[node_id] = node
-            self._virtual_subnode_ids.add(node_id)
-        else:
-            self._subnodes[node.id] = node
-            node._parent = self
+        self._subnodes.add_node(node, virtual=virtual)
         return node
 
     async def attach_node_with_hooks(self, node: T, *, virtual: bool = False) -> T:
@@ -185,22 +235,13 @@ class Node:
         return node
 
     @overload
-    def detach_node(self, node: str) -> Node: ...
+    def detach_node(self, node: str) -> Node | None: ...
 
     @overload
-    def detach_node(self, node: T) -> T: ...
+    def detach_node(self, node: T) -> T | None: ...
 
-    def detach_node(self, node: T | str) -> T | Node:
-        node = self[node]                               # todo
-        node_id = self.get_subnode_id(node)             # todo
-        virtual = node_id in self.virtual_subnode_ids   # todo
-
-        detached_node = self._subnodes.pop(node_id)
-        if virtual:
-            self._virtual_subnode_ids.discard(node_id)
-        else:
-            detached_node._parent = None
-        return detached_node
+    def detach_node(self, node: T | str) -> T | Node | None:
+        return self._subnodes.remove_node(node)
 
     @overload
     async def detach_node_with_hooks(self, node: str) -> Node: ...
@@ -208,13 +249,13 @@ class Node:
     @overload
     async def detach_node_with_hooks(self, node: T) -> T: ...
 
-    async def detach_node_with_hooks(self, node: T | str) -> T | Node:
-        node = self[node]                               # todo
-        node_id = self.get_subnode_id(node)             # todo
-        virtual = node_id in self.virtual_subnode_ids   # todo
-
+    async def detach_node_with_hooks(self, node: T | str) -> T | Node | None:
+        is_virtual = self._subnodes.is_virtual(node)
         node = self.detach_node(node)
-        if not virtual:
+        if node is None:
+            return None
+
+        if not is_virtual:
             await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node, self)
         return node
 
@@ -228,7 +269,7 @@ class Node:
             type=NodeType.CONTAINER,
             subnodes={
                 k: i.get_node_info(same_source_only=same_source_only)
-                for k, i in subnodes.values()
+                for k, i in subnodes.items()
                 if (same_source_only and self.inherited_source == i.inherited_source)
                 or not same_source_only
             },
@@ -252,22 +293,9 @@ class Node:
             if node is self:
                 raise NodeLoopError('Node cannot be attached to itself.')
 
-            if node.id in self.subnodes:
-                raise NodeDuplicateError(
-                    f'Node {self.path} already contains a subnode with id {node.id}.',
-                )
-        else:
-            id = self.get_subnode_id(node)
-            if id:
-                raise NodeDuplicateError(
-                    f'Node {self.path} already contains a subnode {node} with id {id!r}.',
-                )
-            return
-
-        for i in node.chain_to_tails():
-            if i is self:
-                raise NodeLoopError('Node loop.')  # todo
-        return
+            for i in node.chain_to_tails():
+                if i is self:
+                    raise NodeLoopError('Node loop.')  # todo
 
     def chain_to_root(self) -> Generator[Node, None, None]:
         node: Node | None = self
@@ -373,21 +401,3 @@ class Node:
                 )
             node = node.subnodes[i]
         return node
-
-    @overload
-    def __getitem__(self, item: str) -> Node: ...
-
-    @overload
-    def __getitem__(self, item: T) -> T: ...
-
-    def __getitem__(self, item: str | T) -> Node | T:
-        if not isinstance(item, (str, Node)):
-            raise TypeError(f'Item must be an instance of `str` or `Node`.')
-
-        if isinstance(item, str):
-            return self.subnodes[item]
-
-        for i in self.subnodes.values():
-            if i is item:
-                return item
-        raise KeyError(f'Node {self.path} does not contain subnode {item!r}.')
