@@ -18,9 +18,9 @@ from collections.abc import Callable, Awaitable
 
 from typing_extensions import Self, Unpack, Required, TypedDict, NotRequired
 
+from pyconfigtree.base import Node, leaf
 from pyconfigtree.exceptions import ValidationError, DeserializationError
 
-from pyconfigtree.base import Node, leaf
 from ..source.base import ALLOWED_TYPES, NodeInfo, NodeType
 
 
@@ -250,10 +250,14 @@ class TypedParameter(MutableParameter[TT], Generic[TT]):
                 raise TypeError(f'`{cls.__name__}` must define `{i}`.')
 
     def __init__(self, node_id: str, **kwargs: Unpack[_TypedParameterKwargs[Self, TT]]) -> None:
-        super().__init__(node_id=node_id, **kwargs | {
-            'serializer': kwargs.get('serializer', self._DEFAULT_SERIALIZER),
-            'deserializer': kwargs.get('deserializer', self._DEFAULT_DESERIALIZER)
-        })
+        super().__init__(
+            node_id=node_id,
+            **kwargs
+            | {
+                'serializer': kwargs.get('serializer', self._DEFAULT_SERIALIZER),
+                'deserializer': kwargs.get('deserializer', self._DEFAULT_DESERIALIZER),
+            },
+        )
 
     def deserialize(self, value: Any) -> TT:
         res = super().deserialize(value)

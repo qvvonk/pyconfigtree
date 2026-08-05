@@ -1,17 +1,12 @@
 from __future__ import annotations
 
 
-__all__ = [
-    'Node',
-    'leaf',
-    'container'
-]
+__all__ = ['Node', 'leaf', 'container']
 
-from dataclasses import dataclass
-from typing import Any, TypeVar, TypeAlias, overload, Literal, ClassVar
+from typing import Any, Literal, TypeVar, ClassVar, TypeAlias, overload
 from enum import Enum, auto
 from types import MappingProxyType
-from collections.abc import Mapping, Callable, Sequence, Awaitable, Generator, Iterable
+from collections.abc import Mapping, Callable, Iterable, Sequence, Awaitable, Generator
 
 from .source import ConfigSource
 from .exceptions import LeafNodeError, NodeLoopError, NoSourceError, NodeDuplicateError
@@ -65,10 +60,9 @@ class SubnodesController:
             if node not in self.id_to_node:
                 raise KeyError(f'{self.owner.path!r} does not contain node with ID {node!r}.')
             return self.id_to_node[node]
-        else:
-            if node not in self.node_to_id:
-                raise KeyError(f'{self.owner.path!r} does not contain node {node!r}.')
-            return node
+        if node not in self.node_to_id:
+            raise KeyError(f'{self.owner.path!r} does not contain node {node!r}.')
+        return node
 
     def get_node_id(self, node: Node | str) -> str:
         return self.node_to_id[self[node]]
@@ -87,9 +81,11 @@ class SubnodesController:
         node_id = node.id if not virtual else self.gen_virtual_node_id(node)
 
         if node_id in self.id_to_node:
-            raise KeyError(f'Node {self.owner.path!r} already has a subnode with id {node_id!r}.')
+            raise NodeDuplicateError(
+                f'Node {self.owner.path!r} already has a subnode with id {node_id!r}.'
+            )
         if node in self.node_to_id:
-            raise KeyError(f'Node {self.owner.path!r} already has a subnode {node!r}.')
+            raise NodeDuplicateError(f'Node {self.owner.path!r} already has a subnode {node!r}.')
 
         self.id_to_node[node_id] = node
         self.node_to_id[node] = node_id
@@ -226,6 +222,7 @@ class Node:
     def attach_node(self, node: T, *, virtual: bool = False) -> T:
         self.check_can_attach_node(node, virtual=virtual)
         self._subnodes.add_node(node, virtual=virtual)
+        node._parent = self
         return node
 
     async def attach_node_with_hooks(self, node: T, *, virtual: bool = False) -> T:
@@ -241,13 +238,17 @@ class Node:
     def detach_node(self, node: T) -> T | None: ...
 
     def detach_node(self, node: T | str) -> T | Node | None:
-        return self._subnodes.remove_node(node)
+        is_virtual = self._subnodes.is_virtual(node)
+        to_return = self._subnodes.remove_node(node)
+        if not is_virtual:
+            to_return._parent = None
+        return to_return
 
     @overload
-    async def detach_node_with_hooks(self, node: str) -> Node: ...
+    async def detach_node_with_hooks(self, node: str) -> Node | None: ...
 
     @overload
-    async def detach_node_with_hooks(self, node: T) -> T: ...
+    async def detach_node_with_hooks(self, node: T) -> T | None: ...
 
     async def detach_node_with_hooks(self, node: T | str) -> T | Node | None:
         is_virtual = self._subnodes.is_virtual(node)
@@ -275,7 +276,7 @@ class Node:
             },
         )
 
-    def check_can_be_attached(self, virtual: bool = False) -> None:
+    def check_can_be_attached(self, *, virtual: bool = False) -> None:
         if not virtual:
             if self._parent is not None:
                 raise RuntimeError(
