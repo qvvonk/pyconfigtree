@@ -222,7 +222,8 @@ class Node:
     def attach_node(self, node: T, *, virtual: bool = False) -> T:
         self.check_can_attach_node(node, virtual=virtual)
         self._subnodes.add_node(node, virtual=virtual)
-        node._parent = self
+        if not virtual:
+            node._parent = self
         return node
 
     async def attach_node_with_hooks(self, node: T, *, virtual: bool = False) -> T:
@@ -389,7 +390,7 @@ class Node:
 
     def get_node(self, path: Iterable[str], _raise: bool = True) -> Node | None:
         if not path:
-            return None
+            return self
 
         node = self
         for i in path:
