@@ -19,7 +19,7 @@ def test_cannot_attach_node_to_parameter(param: parameter.Parameter[Any]) -> Non
     node = Node('test')
     assert pytest.raises(
         LeafNodeError,
-        param._attach_node,
+        param.attach_node,
         node,
     )
 
@@ -28,7 +28,7 @@ def test_cannot_attach_node_to_itself() -> None:
     node = Node('test')
     assert pytest.raises(
         NodeLoopError,
-        node._attach_node,
+        node.attach_node,
         node,
     )
 
@@ -36,10 +36,10 @@ def test_cannot_attach_node_to_itself() -> None:
 def test_cannot_attach_node_with_a_loop() -> None:
     node_1 = Node('1')
     node_2 = Node('2')
-    node_1._attach_node(node_2)
+    node_1.attach_node(node_2)
     assert pytest.raises(
         NodeLoopError,
-        node_2._attach_node,
+        node_2.attach_node,
         node_1,
     )
 
@@ -49,9 +49,9 @@ def test_cannot_attach_node_with_same_id() -> None:
     node_2 = Node('2')
     node_3 = Node('2')
 
-    node_1._attach_node(node_2)
+    node_1.attach_node(node_2)
     assert pytest.raises(
         NodeDuplicateError,
-        node_1._attach_node,
+        node_1.attach_node,
         node_3,
     )
