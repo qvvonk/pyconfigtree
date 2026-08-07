@@ -148,7 +148,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         self._validator = validator
         self._changing_lock = Lock()
 
-        initial_value = self.default_value if value is _MISSING else value
+        initial_value = cast(T, self.default_value if value is _MISSING else value)
         self._ensure_value_type(initial_value)
 
         super().__init__(
@@ -163,12 +163,9 @@ class MutableParameter(Parameter[T], Generic[T]):
 
     @property
     def default_value(self) -> T:
-        if self._default_factory is not None:
-            value = self._default_factory()
-        else:
-            value = self._default_value
+        value = self._default_value if self._default_factory is None else self._default_factory()
         self._ensure_value_type(value)
-        return value
+        return cast(T, value)
 
     @property
     def spec(self) -> ValueSpec[Self, T]:
