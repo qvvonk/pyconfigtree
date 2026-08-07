@@ -199,8 +199,11 @@ class MutableParameter(Parameter[T], Generic[T]):
         value: object,
         error_type: type[Exception] = ValidationError,
     ) -> None:
-        if not self.spec.validator(self, value):
-            raise error_type('todo: error message')
+        try:
+            if not self.spec.validator(self, value):
+                raise error_type('Validation error.')  # todo: error msg
+        except Exception as exc:
+            raise error_type('Unable to validate value.') from exc  # todo: error msg
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
         return NodeInfo(

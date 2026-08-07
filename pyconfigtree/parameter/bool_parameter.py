@@ -67,7 +67,7 @@ class BoolParameter(MutableParameter[bool]):
 
     async def toggle(
         self, save: bool = True, run_hook: bool = True, validate: bool = True
-    ) -> None:
+    ) -> bool:
         await self.set_value(
             not self.value,
             deserialize=False,
@@ -75,9 +75,4 @@ class BoolParameter(MutableParameter[bool]):
             run_hook=run_hook,
             save=save,
         )
-
-    async def next_value(
-        self, save: bool = True, run_hook: bool = True, validate: bool = True
-    ) -> bool:
-        await self.toggle(save=save, run_hook=run_hook, validate=validate)
         return self.value
