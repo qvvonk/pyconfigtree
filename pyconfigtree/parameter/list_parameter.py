@@ -72,8 +72,7 @@ def list_accepts(node: 'ListParameter[Any]', value: object) -> bool:
 LIST_VALUE_SPEC = ValueSpec(
     serializer=list_serializer,
     deserializer=list_deserializer,
-    accepts=list_accepts,
-    expected_type='a list containing serializable values',
+    validator=list_accepts,
 )
 
 

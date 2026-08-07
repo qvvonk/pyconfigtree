@@ -25,7 +25,7 @@ from typing_extensions import Self, TypedDict, NotRequired
 from pyconfigtree.base import Node, leaf
 from pyconfigtree.exceptions import ValidationError, DeserializationError
 
-from ..source.base import ALLOWED_TYPES, NodeInfo, NodeType
+from pyconfigtree.source.base import ALLOWED_TYPES, NodeInfo, NodeType
 
 
 ON_PARAMETER_VALUE_CHANGED_HOOK: TypeAlias = Callable[['MutableParameter[Any]'], Awaitable[Any]]
@@ -59,8 +59,7 @@ T = TypeVar('T')
 class ValueSpec(Generic[_NODE, T]):
     serializer: Serializer[_NODE, T]
     deserializer: Deserializer[_NODE, T]
-    accepts: Callable[[_NODE, object], bool]
-    expected_type: str
+    validator: Callable[[_NODE, object], bool]
 
 
 @leaf
@@ -143,13 +142,13 @@ class MutableParameter(Parameter[T], Generic[T]):
                 f'`{type(self).__name__}` must define `SPEC` or receive `spec` in its constructor.'
             )
 
-        self._spec = cast(ValueSpec[Self, T], resolved_spec)
+        self._spec = resolved_spec
         self._default_factory = default_factory
         self._default_value = default_value
-        self._changing_lock = Lock()
         self._validator = validator
+        self._changing_lock = Lock()
 
-        initial_value = self.default_value if value is _MISSING else cast(T, value)
+        initial_value = self.default_value if value is _MISSING else value
         self._ensure_value_type(initial_value)
 
         super().__init__(
@@ -167,7 +166,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         if self._default_factory is not None:
             value = self._default_factory()
         else:
-            value = cast(T, self._default_value)
+            value = self._default_value
         self._ensure_value_type(value)
         return value
 
@@ -200,11 +199,8 @@ class MutableParameter(Parameter[T], Generic[T]):
         value: object,
         error_type: type[Exception] = ValidationError,
     ) -> None:
-        if not self.spec.accepts(self, value):
-            raise error_type(
-                f'Value of `{type(self).__name__}` must be {self.spec.expected_type}, '
-                f'not `{type(value).__name__}`.'
-            )
+        if not self.spec.validator(self, value):
+            raise error_type('todo: error message')
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
         return NodeInfo(
@@ -221,12 +217,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         validate: bool = True,
         run_hook: bool = False,
     ) -> None:
-        await self.set_value(
-            data_dict,
-            save=False,
-            run_hook=run_hook,
-            validate=validate,
-        )
+        await self.set_value(data_dict, save=False, run_hook=run_hook, validate=validate)
 
     async def set_value(
         self,
@@ -262,7 +253,7 @@ class MutableParameter(Parameter[T], Generic[T]):
             result = self.deserializer(self, value)
         except DeserializationError:
             raise
-        except (TypeError, ValueError) as exc:
+        except Exception as exc:
             raise DeserializationError(
                 f'Unable to deserialize {value!r} for `{type(self).__name__}`.'
             ) from exc

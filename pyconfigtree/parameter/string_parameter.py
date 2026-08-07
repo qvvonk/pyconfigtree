@@ -25,13 +25,5 @@ def str_accepts(node: StringParameter, value: object) -> bool:
     return type(value) is str
 
 
-STRING_VALUE_SPEC = ValueSpec(
-    serializer=str_serializer,
-    deserializer=str_deserializer,
-    accepts=str_accepts,
-    expected_type='a `str`',
-)
-
-
 class StringParameter(MutableParameter[str]):
-    SPEC = STRING_VALUE_SPEC
+    SPEC = ValueSpec(serializer=str_serializer, deserializer=str_deserializer, validator=str_accepts)

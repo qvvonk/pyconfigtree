@@ -32,8 +32,7 @@ def float_accepts(node: FloatParameter, value: object) -> bool:
 FLOAT_VALUE_SPEC = ValueSpec(
     serializer=float_serializer,
     deserializer=float_deserializer,
-    accepts=float_accepts,
-    expected_type='a `float`',
+    validator=float_accepts,
 )
 
 

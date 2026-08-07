@@ -44,8 +44,7 @@ def choice_accepts(node: 'ChoiceParameter[Any]', value: object) -> bool:
 CHOICE_VALUE_SPEC = ValueSpec(
     serializer=choice_serializer,
     deserializer=choice_deserializer,
-    accepts=choice_accepts,
-    expected_type='a `Choice` belonging to this parameter',
+    validator=choice_accepts,
 )
 
 

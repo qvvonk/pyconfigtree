@@ -32,8 +32,7 @@ def int_accepts(node: IntParameter, value: object) -> bool:
 INT_VALUE_SPEC = ValueSpec(
     serializer=int_serializer,
     deserializer=int_deserializer,
-    accepts=int_accepts,
-    expected_type='an `int`',
+    validator=int_accepts,
 )
 
 

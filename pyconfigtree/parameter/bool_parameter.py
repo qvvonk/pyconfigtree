@@ -33,15 +33,14 @@ def bool_deserializer(node: 'BoolParameter', value: Any) -> bool:
     raise DeserializationError(f'Unable to deserialize {value!r} as a boolean.')
 
 
-def bool_accepts(node: BoolParameter, value: object) -> bool:
+def bool_validator(node: BoolParameter, value: object) -> bool:
     return type(value) is bool
 
 
 BOOL_VALUE_SPEC = ValueSpec(
     serializer=bool_serializer,
     deserializer=bool_deserializer,
-    accepts=bool_accepts,
-    expected_type='a `bool`',
+    validator=bool_validator,
 )
 
 
