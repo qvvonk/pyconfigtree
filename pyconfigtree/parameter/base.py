@@ -1,27 +1,31 @@
+from __future__ import annotations
+
+
 __all__ = [
     'ParameterHookTypes',
     'Serializer',
     'Deserializer',
     'Validator',
+    'ValueSpec',
     'Parameter',
     'MutableParameter',
-    'TypedParameter',
     'ON_PARAMETER_VALUE_CHANGED_HOOK',
     '_MutableParameterKwargs',
 ]
 
 
-from typing import Any, Type, Generic, TypeVar, Protocol, TypeAlias
+from typing import Any, Generic, TypeVar, ClassVar, Protocol, TypeAlias, cast
 from enum import Enum, auto
 from asyncio import Lock
+from dataclasses import dataclass
 from collections.abc import Callable, Awaitable
 
-from typing_extensions import Self, Unpack, Required, TypedDict, NotRequired
+from typing_extensions import Self, TypedDict, NotRequired
 
 from pyconfigtree.base import Node, leaf
 from pyconfigtree.exceptions import ValidationError, DeserializationError
 
-from ..source.base import ALLOWED_TYPES, NodeInfo, NodeType
+from pyconfigtree.source.base import ALLOWED_TYPES, NodeInfo, NodeType
 
 
 ON_PARAMETER_VALUE_CHANGED_HOOK: TypeAlias = Callable[['MutableParameter[Any]'], Awaitable[Any]]
@@ -51,6 +55,13 @@ class Validator(Protocol[_NODE, _VALUE_contra]):
 T = TypeVar('T')
 
 
+@dataclass(frozen=True, slots=True)
+class ValueSpec(Generic[_NODE, T]):
+    serializer: Serializer[_NODE, T]
+    deserializer: Deserializer[_NODE, T]
+    validator: Callable[[_NODE, object], bool]
+
+
 @leaf
 class Parameter(Node, Generic[T]):
     def __init__(
@@ -78,69 +89,71 @@ class Parameter(Node, Generic[T]):
         return
 
 
-_VALUE_TYPE = TypeVar('_VALUE_TYPE')  # Parameter value type
-_PARAM_CLASS = TypeVar('_PARAM_CLASS')  # Parameter class
+class _Missing:
+    __slots__ = ()
 
 
-class _CommonMutableParameterKwargs(TypedDict, Generic[_PARAM_CLASS, _VALUE_TYPE]):
+_MISSING = _Missing()
+
+_VALUE_TYPE = TypeVar('_VALUE_TYPE')
+_PARAM_CLASS = TypeVar('_PARAM_CLASS')
+
+
+class _MutableParameterKwargs(TypedDict, Generic[_PARAM_CLASS, _VALUE_TYPE]):
     name: NotRequired[str]
     description: NotRequired[str]
-    value: NotRequired[_VALUE_TYPE | None]
-    default_value: NotRequired[_VALUE_TYPE | None]
+    value: NotRequired[_VALUE_TYPE]
+    default_value: NotRequired[_VALUE_TYPE]
     default_factory: NotRequired[Callable[[], _VALUE_TYPE] | None]
     validator: NotRequired[Validator[_PARAM_CLASS, _VALUE_TYPE] | None]
+    spec: NotRequired[ValueSpec[_PARAM_CLASS, _VALUE_TYPE] | None]
     on_value_changed_hook: NotRequired[ON_PARAMETER_VALUE_CHANGED_HOOK | None]
     flags: NotRequired[set[Any] | None]
 
 
-class _MutableParameterKwargs(
-    _CommonMutableParameterKwargs[_PARAM_CLASS, _VALUE_TYPE], Generic[_PARAM_CLASS, _VALUE_TYPE]
-):
-    serializer: Required[Serializer[_PARAM_CLASS, _VALUE_TYPE]]
-    deserializer: Required[Deserializer[_PARAM_CLASS, _VALUE_TYPE]]
-
-
-class _TypedParameterKwargs(
-    _CommonMutableParameterKwargs[_PARAM_CLASS, _VALUE_TYPE], Generic[_PARAM_CLASS, _VALUE_TYPE]
-):
-    serializer: NotRequired[Serializer[_PARAM_CLASS, _VALUE_TYPE]]
-    deserializer: NotRequired[Deserializer[_PARAM_CLASS, _VALUE_TYPE]]
-
-
 class MutableParameter(Parameter[T], Generic[T]):
+    SPEC: ClassVar[ValueSpec[Any, Any] | None] = None
+
     def __init__(
         self,
         node_id: str,
         *,
         name: str = '',
         description: str = '',
-        value: T | None = None,
-        default_value: T | None = None,
+        value: T | _Missing = _MISSING,
+        default_value: T | _Missing = _MISSING,
         default_factory: Callable[[], T] | None = None,
         validator: Validator[Self, T] | None = None,
-        serializer: Serializer[Self, T],
-        deserializer: Deserializer[Self, T],
+        spec: ValueSpec[Self, T] | None = None,
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
         flags: set[Any] | None = None,
     ) -> None:
-        if default_value is None and default_factory is None:
+        if default_value is _MISSING and default_factory is None:
             raise ValueError('Either `default_value` or `default_factory` must be specified.')
-        if default_value is not None and default_factory is not None:
+        if default_value is not _MISSING and default_factory is not None:
             raise ValueError(
                 'Either `default_value` or `default_factory` must be specified, '
                 'but not both of them.',
             )
 
+        resolved_spec = spec if spec is not None else type(self).SPEC
+        if resolved_spec is None:
+            raise TypeError(
+                f'`{type(self).__name__}` must define `SPEC` or receive `spec` in its constructor.'
+            )
+
+        self._spec = resolved_spec
         self._default_factory = default_factory
         self._default_value = default_value
-        self._changing_lock = Lock()
         self._validator = validator
-        self._serializer = serializer
-        self._deserializer = deserializer
+        self._changing_lock = Lock()
+
+        initial_value = self.default_value if value is _MISSING else value
+        self._ensure_value_type(initial_value)
 
         super().__init__(
             node_id=node_id,
-            value=value if value is not None else self.default_value,
+            value=initial_value,
             name=name,
             description=description,
             flags=flags,
@@ -151,16 +164,23 @@ class MutableParameter(Parameter[T], Generic[T]):
     @property
     def default_value(self) -> T:
         if self._default_factory is not None:
-            return self._default_factory()
-        return self._default_value
+            value = self._default_factory()
+        else:
+            value = self._default_value
+        self._ensure_value_type(value)
+        return value
+
+    @property
+    def spec(self) -> ValueSpec[Self, T]:
+        return self._spec
 
     @property
     def serializer(self) -> Serializer[Self, T]:
-        return self._serializer
+        return self.spec.serializer
 
     @property
     def deserializer(self) -> Deserializer[Self, T]:
-        return self._deserializer
+        return self.spec.deserializer
 
     @property
     def validator(self) -> Validator[Self, T] | None:
@@ -173,6 +193,14 @@ class MutableParameter(Parameter[T], Generic[T]):
     @on_value_changed_hook.setter
     def on_value_changed_hook(self, hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None) -> None:
         self._hooks[ParameterHookTypes.PARAMETER_VALUE_CHANGED] = hook
+
+    def _ensure_value_type(
+        self,
+        value: object,
+        error_type: type[Exception] = ValidationError,
+    ) -> None:
+        if not self.spec.validator(self, value):
+            raise error_type('todo: error message')
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
         return NodeInfo(
@@ -189,12 +217,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         validate: bool = True,
         run_hook: bool = False,
     ) -> None:
-        await self.set_value(
-            data_dict,
-            save=False,
-            run_hook=run_hook,
-            validate=validate,
-        )
+        await self.set_value(data_dict, save=False, run_hook=run_hook, validate=validate)
 
     async def set_value(
         self,
@@ -207,11 +230,15 @@ class MutableParameter(Parameter[T], Generic[T]):
     ) -> None:
         async with self._changing_lock:
             if deserialize:
-                value = self.deserialize(value)
-            if validate:
-                await self.validate(value)
+                candidate = self.deserialize(value)
+            else:
+                self._ensure_value_type(value)
+                candidate = cast(T, value)
 
-            self._value = value
+            if validate:
+                await self.validate(candidate)
+
+            self._value = candidate
             if save:
                 await self.save()
 
@@ -222,56 +249,18 @@ class MutableParameter(Parameter[T], Generic[T]):
         return self.serializer(self, self.value)
 
     def deserialize(self, value: Any) -> T:
-        return self.deserializer(self, value)
+        try:
+            result = self.deserializer(self, value)
+        except DeserializationError:
+            raise
+        except Exception as exc:
+            raise DeserializationError(
+                f'Unable to deserialize {value!r} for `{type(self).__name__}`.'
+            ) from exc
+
+        self._ensure_value_type(result, DeserializationError)
+        return result
 
     async def validate(self, value: T) -> None:
         if self.validator is not None:
             await self.validator(self, value)
-
-
-TT = TypeVar('TT')
-
-
-class TypedParameter(MutableParameter[TT], Generic[TT]):
-    _DEFAULT_SERIALIZER: Serializer[Self, TT]
-    _DEFAULT_DESERIALIZER: Deserializer[Self, TT]
-    _VALUE_TYPE: Type[TT]
-
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        if cls is TypedParameter:
-            return
-
-        for i in [
-            '_DEFAULT_SERIALIZER',
-            '_DEFAULT_DESERIALIZER',
-            '_VALUE_TYPE',
-        ]:
-            if i not in cls.__dict__:
-                raise TypeError(f'`{cls.__name__}` must define `{i}`.')
-
-    def __init__(self, node_id: str, **kwargs: Unpack[_TypedParameterKwargs[Self, TT]]) -> None:
-        super().__init__(
-            node_id=node_id,
-            **kwargs
-            | {
-                'serializer': kwargs.get('serializer', self._DEFAULT_SERIALIZER),
-                'deserializer': kwargs.get('deserializer', self._DEFAULT_DESERIALIZER),
-            },
-        )
-
-    def deserialize(self, value: Any) -> TT:
-        res = super().deserialize(value)
-        if not isinstance(res, self._VALUE_TYPE):
-            raise DeserializationError(
-                f'Deserialized value of `{self.__class__.__name__}` must be an instance of '
-                f'`{self._VALUE_TYPE.__name__}`, not `{type(res)}`.',
-            )
-        return res
-
-    async def validate(self, value: Any) -> None:
-        if not isinstance(value, self._VALUE_TYPE):
-            raise ValidationError(
-                f'Value of `{self.__class__.__name__}` must be an instance of '
-                f'`{self._VALUE_TYPE.__name__}`, not `{type(value)}`.',
-            )
-        return await super().validate(value)

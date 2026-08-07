@@ -1,5 +1,6 @@
 from .base import (
     Parameter as Parameter,
+    ValueSpec as ValueSpec,
     MutableParameter as MutableParameter,
 )
 from .int_parameter import IntParameter as IntParameter
