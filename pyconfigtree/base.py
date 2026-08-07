@@ -99,16 +99,16 @@ class SubnodesController:
 
     def remove_node(self, node: str | T) -> Node | T | None:
         try:
-            node = self[node]
+            node_obj = self[node]
         except KeyError:
             return None
-        node_id = self.get_node_id(node)
+        node_id = self.get_node_id(node_obj)
 
-        self.node_to_id.pop(node)
+        self.node_to_id.pop(node_obj)
         self.id_to_node.pop(node_id)
         self.persistent_nodes.pop(node_id, None)
         self.virtual_nodes.pop(node_id, None)
-        return node
+        return node_obj
 
     def is_virtual(self, node: Node | str) -> bool:
         return self.get_node_id(self[node]) in self.virtual_nodes
@@ -242,7 +242,8 @@ class Node:
         is_virtual = self._subnodes.is_virtual(node)
         to_return = self._subnodes.remove_node(node)
         if not is_virtual:
-            to_return._parent = None
+            to_return._parent = None  # type: ignore[union-attr]  # ->
+            # if to_return is None, is_virtual would raise an exception.
         return to_return
 
     @overload
@@ -253,13 +254,13 @@ class Node:
 
     async def detach_node_with_hooks(self, node: T | str) -> T | Node | None:
         is_virtual = self._subnodes.is_virtual(node)
-        node = self.detach_node(node)
-        if node is None:
+        node_obj = self.detach_node(node)
+        if node_obj is None:
             return None
 
         if not is_virtual:
-            await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node, self)
-        return node
+            await self.run_hook(BaseHookTypes.ON_NODE_DETACHED, node_obj, self)
+        return node_obj
 
     def get_node_info(self, same_source_only: bool = True) -> NodeInfo:
         subnodes = self.persistent_subnodes
