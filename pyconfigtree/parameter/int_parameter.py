@@ -10,7 +10,9 @@ __all__ = [
 
 from typing import Any
 
-from .base import TypedParameter
+from pyconfigtree.exceptions import DeserializationError
+
+from .base import ValueSpec, MutableParameter
 
 
 def int_serializer(node: IntParameter, value: int) -> int:
@@ -18,10 +20,22 @@ def int_serializer(node: IntParameter, value: int) -> int:
 
 
 def int_deserializer(node: IntParameter, value: Any) -> int:
+    if isinstance(value, bool):
+        raise DeserializationError('Boolean values cannot be deserialized as integers.')
     return int(value)
 
 
-class IntParameter(TypedParameter[int]):
-    _DEFAULT_SERIALIZER = staticmethod(int_serializer)
-    _DEFAULT_DESERIALIZER = staticmethod(int_deserializer)
-    _VALUE_TYPE = int
+def int_accepts(node: IntParameter, value: object) -> bool:
+    return type(value) is int
+
+
+INT_VALUE_SPEC = ValueSpec(
+    serializer=int_serializer,
+    deserializer=int_deserializer,
+    accepts=int_accepts,
+    expected_type='an `int`',
+)
+
+
+class IntParameter(MutableParameter[int]):
+    SPEC = INT_VALUE_SPEC

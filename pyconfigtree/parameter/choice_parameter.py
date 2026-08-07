@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 
 from typing_extensions import Self, Unpack
 
-from .base import TypedParameter, _MutableParameterKwargs
+from .base import ValueSpec, MutableParameter, _MutableParameterKwargs
 
 
 T = TypeVar('T')
@@ -19,11 +19,10 @@ class Choice(Generic[T]):
     value: T
 
     def __post_init__(self) -> None:
-        if not self.id:
-            raise ValueError('Choice ID cannot be empty.')
-
         if not isinstance(self.id, str):
             raise TypeError('Choice ID must be a string.')
+        if not self.id:
+            raise ValueError('Choice ID cannot be empty.')
 
     def __str__(self) -> str:
         return self.id
@@ -38,10 +37,20 @@ def choice_deserializer(node: 'ChoiceParameter[Any]', value: Any) -> Choice[Any]
     return node.choices.get(value, node.choices[node.fallback_choice_id])
 
 
-class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
-    _DEFAULT_SERIALIZER = choice_serializer
-    _DEFAULT_DESERIALIZER = choice_deserializer
-    _VALUE_TYPE = Choice
+def choice_accepts(node: 'ChoiceParameter[Any]', value: object) -> bool:
+    return isinstance(value, Choice) and value in node.choices.values()
+
+
+CHOICE_VALUE_SPEC = ValueSpec(
+    serializer=choice_serializer,
+    deserializer=choice_deserializer,
+    accepts=choice_accepts,
+    expected_type='a `Choice` belonging to this parameter',
+)
+
+
+class ChoiceParameter(MutableParameter[Choice[T]], Generic[T]):
+    SPEC = CHOICE_VALUE_SPEC
 
     def __init__(
         self,
@@ -83,10 +92,6 @@ class ChoiceParameter(TypedParameter[Choice[T]], Generic[T]):
         run_hook: bool = True,
         save: bool = True,
     ) -> None:
-        choice = self.choices.get(value) if isinstance(value, str) else value
-        if choice not in self.choices.values():
-            raise ValueError('Invalid choice.')
-
         await super().set_value(
-            choice, deserialize=deserialize, validate=validate, run_hook=run_hook, save=save
+            value, deserialize=deserialize, validate=validate, run_hook=run_hook, save=save
         )

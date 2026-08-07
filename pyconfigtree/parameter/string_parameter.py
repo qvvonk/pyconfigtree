@@ -10,7 +10,7 @@ __all__ = [
 
 from typing import Any
 
-from .base import TypedParameter
+from .base import ValueSpec, MutableParameter
 
 
 def str_serializer(node: StringParameter, value: str) -> str:
@@ -21,7 +21,17 @@ def str_deserializer(node: StringParameter, value: Any) -> str:
     return str(value)
 
 
-class StringParameter(TypedParameter[str]):
-    _DEFAULT_SERIALIZER = staticmethod(str_serializer)
-    _DEFAULT_DESERIALIZER = staticmethod(str_deserializer)
-    _VALUE_TYPE = str
+def str_accepts(node: StringParameter, value: object) -> bool:
+    return type(value) is str
+
+
+STRING_VALUE_SPEC = ValueSpec(
+    serializer=str_serializer,
+    deserializer=str_deserializer,
+    accepts=str_accepts,
+    expected_type='a `str`',
+)
+
+
+class StringParameter(MutableParameter[str]):
+    SPEC = STRING_VALUE_SPEC

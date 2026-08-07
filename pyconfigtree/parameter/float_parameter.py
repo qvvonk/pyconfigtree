@@ -10,7 +10,9 @@ __all__ = [
 
 from typing import Any
 
-from .base import TypedParameter
+from pyconfigtree.exceptions import DeserializationError
+
+from .base import ValueSpec, MutableParameter
 
 
 def float_serializer(node: FloatParameter, value: float) -> float:
@@ -18,10 +20,22 @@ def float_serializer(node: FloatParameter, value: float) -> float:
 
 
 def float_deserializer(node: FloatParameter, value: Any) -> float:
+    if isinstance(value, bool):
+        raise DeserializationError('Boolean values cannot be deserialized as floats.')
     return float(value)
 
 
-class FloatParameter(TypedParameter[float]):
-    _DEFAULT_SERIALIZER = staticmethod(float_serializer)
-    _DEFAULT_DESERIALIZER = staticmethod(float_deserializer)
-    _VALUE_TYPE = float
+def float_accepts(node: FloatParameter, value: object) -> bool:
+    return type(value) is float
+
+
+FLOAT_VALUE_SPEC = ValueSpec(
+    serializer=float_serializer,
+    deserializer=float_deserializer,
+    accepts=float_accepts,
+    expected_type='a `float`',
+)
+
+
+class FloatParameter(MutableParameter[float]):
+    SPEC = FLOAT_VALUE_SPEC

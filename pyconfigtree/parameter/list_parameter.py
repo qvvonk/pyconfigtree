@@ -1,15 +1,21 @@
 from __future__ import annotations
 
 import json
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 from json import JSONDecodeError
-from collections.abc import Callable, Iterable, Awaitable
+from collections.abc import Callable, Awaitable
 
 from typing_extensions import Self, Unpack
 
-from pyconfigtree.exceptions import DeserializationError
+from pyconfigtree.exceptions import SerializationError, DeserializationError
+from pyconfigtree.source.base import ALLOWED_TYPES
 
-from .base import ALLOWED_TYPES, ParameterHookTypes, _TypedParameterKwargs
+from .base import (
+    ValueSpec,
+    MutableParameter,
+    ParameterHookTypes,
+    _MutableParameterKwargs,
+)
 
 
 __all__ = [
@@ -19,62 +25,74 @@ __all__ = [
 ]
 
 
-from typing import Any
-
-from pyconfigtree.exceptions import SerializationError
-
-from .base import TypedParameter
-
-
-SIMPLE_TYPES = (int, str, float, bool)
-
-
-def list_serializer(value: list[Any]) -> list[ALLOWED_TYPES]:
+def _serialize_list(value: list[Any]) -> list[ALLOWED_TYPES]:
     result: list[ALLOWED_TYPES] = []
     for i in value:
-        if isinstance(i, (int, str, float, bool)):
+        if type(i) in (int, str, float, bool):
             result.append(i)
         elif isinstance(i, list):
-            result.append(list_serializer(i))
+            result.append(_serialize_list(i))
         else:
             raise SerializationError(f'Unable to serialize list item {i!r}.')
     return result
 
 
-def list_deserializer(value: Any) -> list[Any]:
+def list_serializer(node: 'ListParameter[Any]', value: list[Any]) -> list[ALLOWED_TYPES]:
+    return _serialize_list(value)
+
+
+def list_deserializer(node: 'ListParameter[Any]', value: Any) -> list[Any]:
     if isinstance(value, str):
         try:
             value = json.loads(value)
-        except JSONDecodeError:
-            raise DeserializationError(f'Unable to convert string {value!r} to list.')
+        except JSONDecodeError as exc:
+            raise DeserializationError(f'Unable to convert string {value!r} to list.') from exc
 
-    if isinstance(value, Iterable):
-        return [str(i) if not isinstance(i, (int, str, float, bool)) else i for i in value]
+    if isinstance(value, list):
+        return [node.deserialize_item(i) for i in value]
 
-    raise DeserializationError(f'Unable to convert {value!r} to list of strings.')
+    raise DeserializationError(f'Unable to convert {value!r} to list.')
+
+
+def _is_serializable_list_item(value: object) -> bool:
+    if type(value) in (int, str, float, bool):
+        return True
+    if isinstance(value, list):
+        return all(_is_serializable_list_item(item) for item in value)
+    return False
 
 
 T = TypeVar('T')
 
 
-class ListParameter(TypedParameter[list[T]], Generic[T]):
-    _DEFAULT_SERIALIZER = staticmethod(list_serializer)
-    _DEFAULT_DESERIALIZER = staticmethod(list_deserializer)
-    _VALUE_TYPE = list
+def list_accepts(node: 'ListParameter[Any]', value: object) -> bool:
+    return isinstance(value, list) and all(_is_serializable_list_item(item) for item in value)
+
+
+LIST_VALUE_SPEC = ValueSpec(
+    serializer=list_serializer,
+    deserializer=list_deserializer,
+    accepts=list_accepts,
+    expected_type='a list containing serializable values',
+)
+
+
+class ListParameter(MutableParameter[list[T]], Generic[T]):
+    SPEC = LIST_VALUE_SPEC
 
     def __init__(
         self,
         node_id: str,
         *,
         item_deserializer: Callable[[Any], T] | None = None,
-        add_item_validator: Callable[[T, Self], Awaitable[None]] | None = None,
-        remove_item_validator: Callable[[T, Self], Awaitable[None]] | None = None,
-        **kwargs: Unpack[_TypedParameterKwargs[Self, list[T]]],
+        add_item_validator: Callable[[T, ListParameter[T]], Awaitable[None]] | None = None,
+        remove_item_validator: Callable[[T, ListParameter[T]], Awaitable[None]] | None = None,
+        **kwargs: Unpack[_MutableParameterKwargs[Self, list[T]]],
     ) -> None:
-        super().__init__(node_id=node_id, **kwargs)
         self.item_deserializer = item_deserializer
         self.add_item_validator = add_item_validator
         self.remove_item_validator = remove_item_validator
+        super().__init__(node_id=node_id, **kwargs)
 
     async def add_item(
         self,
@@ -84,12 +102,10 @@ class ListParameter(TypedParameter[list[T]], Generic[T]):
         run_hook: bool = True,
         save: bool = True,
     ) -> None:
-        if not isinstance(item, SIMPLE_TYPES):
-            raise ValueError('Only simple types can be added to a list parameter.')
-
         async with self._changing_lock:
             if deserialize:
-                item = await self.deserialize_item(item)
+                item = self.deserialize_item(item)
+            self._ensure_value_type([item])
             if validate:
                 await self.add_item_validate(item)
 
@@ -146,4 +162,4 @@ class ListParameter(TypedParameter[list[T]], Generic[T]):
             await self.remove_item_validator(item, self)
 
     def deserialize_item(self, item: Any) -> T:
-        return item if self.item_deserializer is None else self.item_deserializer(item)
+        return cast(T, item) if self.item_deserializer is None else self.item_deserializer(item)
