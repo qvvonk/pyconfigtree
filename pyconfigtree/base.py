@@ -189,7 +189,7 @@ class Node:
     @property
     def path(self) -> tuple[str, ...]:
         path = reversed([i.id for i in self.chain_to_root()])
-        return tuple(path)
+        return tuple(path)[1:]
 
     @property
     def source(self) -> ConfigSource | None:
