@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+
 __all__ = ['Properties']
 
-from typing import overload, Literal, Any
+from typing import Any, Literal, overload
 
 from .base import Node
 from .parameter import Parameter

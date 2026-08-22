@@ -5,4 +5,4 @@ from .base import (
 )
 from .source import *
 from .parameter import *
-from .properties import Properties
+from .properties import Properties as Properties

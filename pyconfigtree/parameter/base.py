@@ -24,7 +24,6 @@ from typing_extensions import Self, TypedDict, NotRequired
 
 from pyconfigtree.base import Node, leaf
 from pyconfigtree.exceptions import ValidationError, DeserializationError
-
 from pyconfigtree.source.base import ALLOWED_TYPES, NodeInfo, NodeType
 
 
