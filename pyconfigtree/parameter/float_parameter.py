@@ -15,17 +15,17 @@ from pyconfigtree.exceptions import DeserializationError
 from .base import ValueSpec, MutableParameter
 
 
-def float_serializer(node: FloatParameter, value: float) -> float:
+def float_serializer(value: float, node: FloatParameter) -> float:
     return value
 
 
-def float_deserializer(node: FloatParameter, value: Any) -> float:
+def float_deserializer(value: Any, node: FloatParameter) -> float:
     if isinstance(value, bool):
         raise DeserializationError('Boolean values cannot be deserialized as floats.')
     return float(value)
 
 
-def float_accepts(node: FloatParameter, value: object) -> bool:
+def float_accepts(value: object, node: FloatParameter) -> bool:
     return type(value) is float
 
 

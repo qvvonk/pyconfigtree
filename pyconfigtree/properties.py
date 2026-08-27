@@ -28,16 +28,13 @@ class Properties(Node):
         return result
 
     @overload
-    def get_properties(self, path: list[str], _raise: Literal[True] = True) -> Properties:
-        ...
+    def get_properties(self, path: list[str], _raise: Literal[True] = True) -> Properties: ...
 
     @overload
-    def get_properties(self, path: list[str], _raise: Literal[False]) -> Properties:
-        ...
+    def get_properties(self, path: list[str], _raise: Literal[False]) -> Properties: ...
 
     @overload
-    def get_properties(self, path: list[str], _raise: bool = True) -> Properties | None:
-        ...
+    def get_properties(self, path: list[str], _raise: bool = True) -> Properties | None: ...
 
     def get_properties(self, path: list[str], _raise: bool = True) -> Properties | None:
         result = self.get_node(path, _raise)

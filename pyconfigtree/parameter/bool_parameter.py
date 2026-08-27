@@ -15,11 +15,11 @@ from pyconfigtree.exceptions import DeserializationError
 from .base import ValueSpec, MutableParameter
 
 
-def bool_serializer(node: 'BoolParameter', value: bool) -> bool:
+def bool_serializer(value: bool, node: 'BoolParameter') -> bool:
     return value
 
 
-def bool_deserializer(node: 'BoolParameter', value: Any) -> bool:
+def bool_deserializer(value: Any, node: 'BoolParameter') -> bool:
     if type(value) is bool:
         return value
     if type(value) is int and value in (0, 1):
@@ -33,7 +33,7 @@ def bool_deserializer(node: 'BoolParameter', value: Any) -> bool:
     raise DeserializationError(f'Unable to deserialize {value!r} as a boolean.')
 
 
-def bool_validator(node: BoolParameter, value: object) -> bool:
+def bool_validator(value: object, node: BoolParameter) -> bool:
     return type(value) is bool
 
 

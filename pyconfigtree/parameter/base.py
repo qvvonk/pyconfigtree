@@ -13,8 +13,8 @@ __all__ = [
     '_MutableParameterKwargs',
 ]
 
-
 from typing import Any, Generic, TypeVar, ClassVar, Protocol, TypeAlias, cast
+from copy import deepcopy
 from enum import Enum, auto
 from asyncio import Lock
 from dataclasses import dataclass
@@ -39,26 +39,26 @@ _VALUE_co = TypeVar('_VALUE_co', covariant=True)
 _NODE = TypeVar('_NODE', contravariant=True)
 
 
-class Serializer(Protocol[_NODE, _VALUE_contra]):
-    def __call__(self, node: _NODE, value: _VALUE_contra) -> ALLOWED_TYPES: ...
+class Serializer(Protocol[_VALUE_contra, _NODE]):
+    def __call__(self, value: _VALUE_contra, node: _NODE) -> ALLOWED_TYPES: ...
 
 
-class Deserializer(Protocol[_NODE, _VALUE_co]):
-    def __call__(self, node: _NODE, value: ALLOWED_TYPES) -> _VALUE_co: ...
+class Deserializer(Protocol[_VALUE_co, _NODE]):
+    def __call__(self, value: ALLOWED_TYPES, node: _NODE) -> _VALUE_co: ...
 
 
-class Validator(Protocol[_NODE, _VALUE_contra]):
-    async def __call__(self, node: _NODE, value: _VALUE_contra) -> None: ...
+class Validator(Protocol[_VALUE_contra, _NODE]):
+    async def __call__(self, value: _VALUE_contra, node: _NODE) -> None: ...
 
 
 T = TypeVar('T')
 
 
 @dataclass(frozen=True, slots=True)
-class ValueSpec(Generic[_NODE, T]):
-    serializer: Serializer[_NODE, T]
-    deserializer: Deserializer[_NODE, T]
-    validator: Callable[[_NODE, object], bool]
+class ValueSpec(Generic[T, _NODE]):
+    serializer: Serializer[T, _NODE]
+    deserializer: Deserializer[T, _NODE]
+    validator: Callable[[object, _NODE], bool]
 
 
 @leaf
@@ -72,7 +72,7 @@ class Parameter(Node, Generic[T]):
         flags: set[Any] | None = None,
     ) -> None:
         super().__init__(node_id=node_id, name=name, description=description, flags=flags)
-        self._value = value
+        self._value: T = value
 
     @property
     def value(self) -> T:
@@ -104,8 +104,8 @@ class _MutableParameterKwargs(TypedDict, Generic[_PARAM_CLASS, _VALUE_TYPE]):
     value: NotRequired[_VALUE_TYPE]
     default_value: NotRequired[_VALUE_TYPE]
     default_factory: NotRequired[Callable[[], _VALUE_TYPE] | None]
-    validator: NotRequired[Validator[_PARAM_CLASS, _VALUE_TYPE] | None]
-    spec: NotRequired[ValueSpec[_PARAM_CLASS, _VALUE_TYPE] | None]
+    validator: NotRequired[Validator[_VALUE_TYPE, _PARAM_CLASS] | None]
+    spec: NotRequired[ValueSpec[_VALUE_TYPE, _PARAM_CLASS] | None]
     on_value_changed_hook: NotRequired[ON_PARAMETER_VALUE_CHANGED_HOOK | None]
     flags: NotRequired[set[Any] | None]
 
@@ -122,8 +122,8 @@ class MutableParameter(Parameter[T], Generic[T]):
         value: T | _Missing = _MISSING,
         default_value: T | _Missing = _MISSING,
         default_factory: Callable[[], T] | None = None,
-        validator: Validator[Self, T] | None = None,
-        spec: ValueSpec[Self, T] | None = None,
+        validator: Validator[T, Self] | None = None,
+        spec: ValueSpec[T, Self] | None = None,
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
         flags: set[Any] | None = None,
     ) -> None:
@@ -167,19 +167,19 @@ class MutableParameter(Parameter[T], Generic[T]):
         return cast(T, value)
 
     @property
-    def spec(self) -> ValueSpec[Self, T]:
+    def spec(self) -> ValueSpec[T, Self]:
         return self._spec
 
     @property
-    def serializer(self) -> Serializer[Self, T]:
+    def serializer(self) -> Serializer[T, Self]:
         return self.spec.serializer
 
     @property
-    def deserializer(self) -> Deserializer[Self, T]:
+    def deserializer(self) -> Deserializer[T, Self]:
         return self.spec.deserializer
 
     @property
-    def validator(self) -> Validator[Self, T] | None:
+    def validator(self) -> Validator[T, Self] | None:
         return self._validator
 
     @property
@@ -196,7 +196,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         error_type: type[Exception] = ValidationError,
     ) -> None:
         try:
-            if not self.spec.validator(self, value):
+            if not self.spec.validator(value, self):
                 raise error_type('Validation error.')  # todo: error msg
         except Exception as exc:
             raise error_type('Unable to validate value.') from exc  # todo: error msg
@@ -234,22 +234,27 @@ class MutableParameter(Parameter[T], Generic[T]):
                 self._ensure_value_type(value)
                 candidate = cast(T, value)
 
+            new_value = deepcopy(candidate)
             if validate:
-                await self.validate(candidate)
+                await self.validate(deepcopy(new_value))
 
-            self._value = candidate
+            old_value = deepcopy(value)
+            self._value = new_value
             if save:
-                await self.save()
+                try:
+                    await self.save()
+                except Exception:
+                    self._value = old_value
 
         if run_hook:
             await self.run_hook(ParameterHookTypes.PARAMETER_VALUE_CHANGED, self)
 
     def serialize(self) -> ALLOWED_TYPES:
-        return self.serializer(self, self.value)
+        return self.serializer(self.value, self)
 
     def deserialize(self, value: Any) -> T:
         try:
-            result = self.deserializer(self, value)
+            result = self.deserializer(value, self)
         except DeserializationError:
             raise
         except Exception as exc:
@@ -262,4 +267,4 @@ class MutableParameter(Parameter[T], Generic[T]):
 
     async def validate(self, value: T) -> None:
         if self.validator is not None:
-            await self.validator(self, value)
+            await self.validator(value, self)

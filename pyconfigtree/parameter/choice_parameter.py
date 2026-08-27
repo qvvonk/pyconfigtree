@@ -28,16 +28,16 @@ class Choice(Generic[T]):
         return self.id
 
 
-def choice_serializer(node: 'ChoiceParameter[Any]', value: Choice[Any]) -> str:
+def choice_serializer(value: Choice[Any], node: 'ChoiceParameter[Any]') -> str:
     return value.id
 
 
-def choice_deserializer(node: 'ChoiceParameter[Any]', value: Any) -> Choice[Any]:
+def choice_deserializer(value: Any, node: 'ChoiceParameter[Any]') -> Choice[Any]:
     value = str(value)
     return node.choices.get(value, node.choices[node.fallback_choice_id])
 
 
-def choice_accepts(node: 'ChoiceParameter[Any]', value: object) -> bool:
+def choice_accepts(value: object, node: 'ChoiceParameter[Any]') -> bool:
     return isinstance(value, Choice) and value in node.choices.values()
 
 
