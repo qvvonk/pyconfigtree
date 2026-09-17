@@ -69,9 +69,9 @@ class Parameter(Node, Generic[T]):
         value: T,
         name: str = '',
         description: str = '',
-        flags: set[Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__(node_id=node_id, name=name, description=description, flags=flags)
+        super().__init__(node_id=node_id, name=name, description=description, metadata=metadata)
         self._value: T = value
 
     @property
@@ -107,7 +107,7 @@ class _MutableParameterKwargs(TypedDict, Generic[_PARAM_CLASS, _VALUE_TYPE]):
     validator: NotRequired[Validator[_VALUE_TYPE, _PARAM_CLASS] | None]
     spec: NotRequired[ValueSpec[_VALUE_TYPE, _PARAM_CLASS] | None]
     on_value_changed_hook: NotRequired[ON_PARAMETER_VALUE_CHANGED_HOOK | None]
-    flags: NotRequired[set[Any] | None]
+    metadata: NotRequired[dict[str, Any] | None]
 
 
 class MutableParameter(Parameter[T], Generic[T]):
@@ -125,7 +125,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         validator: Validator[T, Self] | None = None,
         spec: ValueSpec[T, Self] | None = None,
         on_value_changed_hook: ON_PARAMETER_VALUE_CHANGED_HOOK | None = None,
-        flags: set[Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         if default_value is _MISSING and default_factory is None:
             raise ValueError('Either `default_value` or `default_factory` must be specified.')
@@ -155,7 +155,7 @@ class MutableParameter(Parameter[T], Generic[T]):
             value=initial_value,
             name=name,
             description=description,
-            flags=flags,
+            metadata=metadata,
         )
 
         self.on_value_changed_hook = on_value_changed_hook

@@ -123,7 +123,7 @@ class Node:
         name: str = '',
         description: str = '',
         source: ConfigSource | None = None,
-        flags: set[Any] | None = None,
+        metadata: dict[str, Any] | None = None,
         on_node_attached_hook: ON_NODE_ATTACHED_HOOK | None = None,
         on_node_detached_hook: ON_NODE_DETACHED_HOOK | None = None,
     ):
@@ -137,15 +137,15 @@ class Node:
         self._virtual_nodes = MappingProxyType(self._subnodes.virtual_nodes)
         self._persistent_nodes = MappingProxyType(self._subnodes.persistent_nodes)
         self._source = source
-        self._flags = flags or set()
+        self._metadata = metadata if metadata is not None else {}
 
         self._hooks: dict[Any, Callable[..., Awaitable[Any]] | None] = {}
         self.on_node_attached_hook = on_node_attached_hook
         self.on_node_detached_hook = on_node_detached_hook
 
     @property
-    def flags(self) -> frozenset[Any]:
-        return frozenset(self._flags)
+    def metadata(self) -> dict[str, Any]:
+        return self._metadata
 
     @property
     def hooks(self) -> Mapping[Any, Callable[..., Awaitable[Any]] | None]:
