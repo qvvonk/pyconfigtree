@@ -1,3 +1,4 @@
+import os
 import json
 from typing import Any
 from pathlib import Path
@@ -11,10 +12,15 @@ class JSONSource(ConfigSource):
         self._encoding = encoding
 
     async def load(self) -> dict[str, Any]:
+        if not os.path.exists(self._path):
+            return {}
+
         with open(self._path, 'r', encoding=self.encoding) as f:
             return json.load(f)  # type: ignore
 
     async def save(self, data: NodeInfo) -> None:
+        if not self._path.parent.exists():
+            self._path.parent.mkdir(parents=True, exist_ok=True)
         dicted = self.node_info_to_dict(data)
         with open(self._path, 'w', encoding=self.encoding) as f:
             json.dump(dicted, f, indent=4)

@@ -1,3 +1,4 @@
+import os.path
 from typing import Any
 from pathlib import Path
 
@@ -13,10 +14,14 @@ class TOMLSource(ConfigSource):
         self._encoding = encoding
 
     async def load(self) -> dict[str, Any]:
+        if not os.path.exists(self._path):
+            return {}
         with open(self._path, 'rb') as f:
             return tomllib.load(f)  # type: ignore
 
     async def save(self, data: NodeInfo) -> None:
+        if not self._path.parent.exists():
+            self._path.parent.mkdir(parents=True, exist_ok=True)
         dicted = self.node_info_to_dict(data)
         with open(self._path, 'w', encoding='utf-8') as f:
             f.write(tomli_w.dumps(dicted, multiline_strings=True, indent=4))
