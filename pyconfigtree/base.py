@@ -355,6 +355,9 @@ class Node:
         data = await self.source.load()
         await self.load_from_dict(data, validate=validate, run_hook=run_hook)
 
+        for source in self.persistent_subnodes.values():
+            await source.load(validate=validate, run_hook=run_hook)
+
     async def load_from_dict(
         self,
         data_dict: dict[str, Any],
