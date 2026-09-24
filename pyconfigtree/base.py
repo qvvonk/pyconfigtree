@@ -348,15 +348,20 @@ class Node:
             node_info = self.get_node_info(same_source_only=same_source_only)
             return await self.source.save(data=node_info)
 
-    async def load(self, validate: bool = True, run_hook: bool = False) -> None:
+    async def load(self, validate: bool = True, run_hook: bool = False, same_source_only: bool = False) -> None:
         if self.source is None:
             raise NoSourceError(f'Cannot load node {self.path}: source not specified.')
 
         data = await self.source.load()
         await self.load_from_dict(data, validate=validate, run_hook=run_hook)
 
-        for source in self.persistent_subnodes.values():
-            await source.load(validate=validate, run_hook=run_hook)
+        if same_source_only:
+            return
+
+        for subnode in self.persistent_subnodes.values():
+            if subnode.source is None:
+                continue
+            await subnode.load(validate=validate, run_hook=run_hook)
 
     async def load_from_dict(
         self,
