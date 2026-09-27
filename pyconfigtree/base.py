@@ -3,7 +3,8 @@ from __future__ import annotations
 
 __all__ = ['Node', 'leaf', 'container']
 
-from typing import Any, Literal, TypeVar, ClassVar, TypeAlias, overload
+from copy import deepcopy
+from typing import Any, Literal, TypeVar, ClassVar, TypeAlias, overload, Self
 from enum import Enum, auto
 from types import MappingProxyType
 from collections.abc import Mapping, Callable, Iterable, Sequence, Awaitable, Generator
@@ -116,6 +117,7 @@ class SubnodesController:
 
 class Node:
     _allow_children: ClassVar[bool] = True
+    _class_defined_nodes: ClassVar[dict[str, Node]]
 
     def __init__(
         self,
@@ -142,6 +144,37 @@ class Node:
         self._hooks: dict[Any, Callable[..., Awaitable[Any]] | None] = {}
         self.on_node_attached_hook = on_node_attached_hook
         self.on_node_detached_hook = on_node_detached_hook
+
+        if self._allow_children:
+            for k, v in self.resolve_class_defined_nodes().items():
+                setattr(self, k, self.attach_node(v.copy_definition()))
+
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        parent_subnodes = {}
+        for i in cls.__mro__:
+            if issubclass(i, Node):
+                parent_subnodes.update(i.resolve_class_defined_nodes())
+
+        class_defined_nodes = {
+            k: v for k, v in cls.__dict__.items() if isinstance(v, Node)
+        } if cls._allow_children else {}
+
+        collision = {i for i in class_defined_nodes if i in parent_subnodes}
+        if collision:
+            raise TypeError(
+                f'Subnodes {", ".join(f'{i!r}' for i in collision)} already attached.'
+            )
+        cls._class_defined_nodes = class_defined_nodes
+
+    @classmethod
+    def resolve_class_defined_nodes(cls) -> dict[str, Node]:
+        result = {}
+        for klass in reversed(cls.__mro__):
+            if not issubclass(klass, Node):
+                continue
+            result.update(klass._class_defined_nodes)
+        return result
 
     @property
     def metadata(self) -> dict[str, Any]:
@@ -412,3 +445,14 @@ class Node:
                 )
             node = node.subnodes[i]
         return node
+
+    def copy_definition(self) -> Self:
+        return self.__class__(
+            node_id=self.id,
+            name=self.name,
+            description=self.description,
+            source=self.source,
+            metadata=deepcopy(self.metadata),
+            on_node_attached_hook=self.on_node_attached_hook,
+            on_node_detached_hook=self.on_node_detached_hook,
+        )

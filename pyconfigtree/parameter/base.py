@@ -87,6 +87,15 @@ class Parameter(Node, Generic[T]):
         # Parameter is immutable and its value cannot be set.
         return
 
+    def copy_definition(self) -> Self:
+        return self.__class__(
+            node_id=self._id,
+            value=self._value,
+            name=self._name,
+            description=self._description,
+            metadata=deepcopy(self._metadata),
+        )
+
 
 class _Missing:
     __slots__ = ()
