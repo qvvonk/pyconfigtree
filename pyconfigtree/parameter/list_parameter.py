@@ -189,3 +189,9 @@ class ListParameter(MutableParameter[list[T]], Generic[T]):
 
     def deserialize_item(self, item: Any) -> T:
         return cast(T, item) if self.item_deserializer is None else self.item_deserializer(item)
+
+    def _definition_dict(self) -> dict[str, Any]:
+        return super()._definition_dict() | {
+            'item_deserializer': self.item_deserializer,
+            'item_validator': self.item_validator,
+        }

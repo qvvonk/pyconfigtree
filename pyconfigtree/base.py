@@ -3,8 +3,8 @@ from __future__ import annotations
 
 __all__ = ['Node', 'leaf', 'container']
 
+from typing import Any, Self, Literal, TypeVar, ClassVar, TypeAlias, overload
 from copy import deepcopy
-from typing import Any, Literal, TypeVar, ClassVar, TypeAlias, overload, Self
 from enum import Enum, auto
 from types import MappingProxyType
 from collections.abc import Mapping, Callable, Iterable, Sequence, Awaitable, Generator
@@ -117,7 +117,7 @@ class SubnodesController:
 
 class Node:
     _allow_children: ClassVar[bool] = True
-    _class_defined_nodes: ClassVar[dict[str, Node]]
+    _class_defined_nodes: ClassVar[dict[str, Node]] = {}
 
     def __init__(
         self,
@@ -147,7 +147,7 @@ class Node:
 
         if self._allow_children:
             for k, v in self.resolve_class_defined_nodes().items():
-                setattr(self, k, self.attach_node(v.copy_definition()))
+                setattr(self, k, self.attach_node(v._copy_definition()))
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
@@ -156,15 +156,15 @@ class Node:
             if issubclass(i, Node):
                 parent_subnodes.update(i.resolve_class_defined_nodes())
 
-        class_defined_nodes = {
-            k: v for k, v in cls.__dict__.items() if isinstance(v, Node)
-        } if cls._allow_children else {}
+        class_defined_nodes = (
+            {k: v for k, v in cls.__dict__.items() if isinstance(v, Node)}
+            if cls._allow_children
+            else {}
+        )
 
         collision = {i for i in class_defined_nodes if i in parent_subnodes}
         if collision:
-            raise TypeError(
-                f'Subnodes {", ".join(f'{i!r}' for i in collision)} already attached.'
-            )
+            raise TypeError(f'Subnodes {", ".join(f"{i!r}" for i in collision)} already attached.')
         cls._class_defined_nodes = class_defined_nodes
 
     @classmethod
@@ -381,7 +381,9 @@ class Node:
             node_info = self.get_node_info(same_source_only=same_source_only)
             return await self.source.save(data=node_info)
 
-    async def load(self, validate: bool = True, run_hook: bool = False, same_source_only: bool = False) -> None:
+    async def load(
+        self, validate: bool = True, run_hook: bool = False, same_source_only: bool = False
+    ) -> None:
         if self.source is None:
             raise NoSourceError(f'Cannot load node {self.path}: source not specified.')
 
@@ -446,13 +448,16 @@ class Node:
             node = node.subnodes[i]
         return node
 
-    def copy_definition(self) -> Self:
-        return self.__class__(
-            node_id=self.id,
-            name=self.name,
-            description=self.description,
-            source=self.source,
-            metadata=deepcopy(self.metadata),
-            on_node_attached_hook=self.on_node_attached_hook,
-            on_node_detached_hook=self.on_node_detached_hook,
-        )
+    def _definition_dict(self) -> dict[str, Any]:
+        return {
+            'node_id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'source': self.source,
+            'metadata': deepcopy(self.metadata),
+            'on_node_attached_hook': self.on_node_attached_hook,
+            'on_node_detached_hook': self.on_node_detached_hook,
+        }
+
+    def _copy_definition(self) -> Self:
+        return self.__class__(**self._definition_dict())

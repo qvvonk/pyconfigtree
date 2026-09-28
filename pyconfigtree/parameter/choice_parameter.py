@@ -1,4 +1,5 @@
 from typing import Any, Generic, TypeVar
+from copy import copy
 from types import MappingProxyType
 from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
@@ -94,3 +95,9 @@ class ChoiceParameter(MutableParameter[Choice[T]], Generic[T]):
         await super().set_value(
             value, deserialize=deserialize, validate=validate, run_hook=run_hook, save=save
         )
+
+    def _definition_dict(self) -> dict[str, Any]:
+        return super()._definition_dict() | {
+            'choices': copy(self._choices),
+            'fallback_choice_id': copy(self._fallback_choice_id),
+        }

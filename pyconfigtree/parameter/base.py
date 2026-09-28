@@ -87,14 +87,14 @@ class Parameter(Node, Generic[T]):
         # Parameter is immutable and its value cannot be set.
         return
 
-    def copy_definition(self) -> Self:
-        return self.__class__(
-            node_id=self._id,
-            value=self._value,
-            name=self._name,
-            description=self._description,
-            metadata=deepcopy(self._metadata),
-        )
+    def _definition_dict(self) -> dict[str, Any]:
+        return {
+            'node_id': self._id,
+            'value': self._value,
+            'name': self._name,
+            'description': self._description,
+            'metadata': deepcopy(self._metadata),
+        }
 
 
 class _Missing:
@@ -110,7 +110,6 @@ _PARAM_CLASS = TypeVar('_PARAM_CLASS')
 class _MutableParameterKwargs(TypedDict, Generic[_PARAM_CLASS, _VALUE_TYPE]):
     name: NotRequired[str]
     description: NotRequired[str]
-    value: NotRequired[_VALUE_TYPE]
     default_value: NotRequired[_VALUE_TYPE]
     default_factory: NotRequired[Callable[[], _VALUE_TYPE] | None]
     validator: NotRequired[Validator[_VALUE_TYPE, _PARAM_CLASS] | None]
@@ -128,7 +127,6 @@ class MutableParameter(Parameter[T], Generic[T]):
         *,
         name: str = '',
         description: str = '',
-        value: T | _Missing = _MISSING,
         default_value: T | _Missing = _MISSING,
         default_factory: Callable[[], T] | None = None,
         validator: Validator[T, Self] | None = None,
@@ -156,7 +154,7 @@ class MutableParameter(Parameter[T], Generic[T]):
         self._validator = validator
         self._changing_lock = Lock()
 
-        initial_value = cast(T, self.default_value if value is _MISSING else value)
+        initial_value = self.default_value
         self._ensure_value_type(initial_value)
 
         super().__init__(
@@ -277,3 +275,16 @@ class MutableParameter(Parameter[T], Generic[T]):
     async def validate(self, value: T) -> None:
         if self.validator is not None:
             await self.validator(value, self)
+
+    def _definition_dict(self) -> dict[str, Any]:
+        return {
+            'node_id': self._id,
+            'name': self._name,
+            'description': self._description,
+            'default_value': self._default_value,
+            'default_factory': self._default_factory,
+            'validator': self._validator,
+            'spec': self._spec if self._spec is not type(self).spec else None,
+            'on_value_changed_hook': self.on_value_changed_hook,
+            'metadata': deepcopy(self._metadata),
+        }
