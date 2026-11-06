@@ -7,7 +7,7 @@ from typing import Any, Self, Literal, TypeVar, ClassVar, TypeAlias, overload
 from copy import deepcopy
 from enum import Enum, auto
 from types import MappingProxyType
-from collections.abc import Mapping, Callable, Iterable, Sequence, Awaitable, Generator
+from collections.abc import Mapping, Callable, Sequence, Awaitable, Generator
 
 from .source import ConfigSource
 from .exceptions import LeafNodeError, NodeLoopError, NoSourceError, NodeDuplicateError
@@ -424,15 +424,15 @@ class Node:
             await self.parent.run_hook(hook_identifier, *args, **kwargs)
 
     @overload
-    def get_node(self, path: Iterable[str], _raise: Literal[True] = True) -> Node: ...
+    def get_node(self, path: Sequence[str], _raise: Literal[True] = True) -> Node: ...
 
     @overload
-    def get_node(self, path: Iterable[str], _raise: Literal[False]) -> Node | None: ...
+    def get_node(self, path: Sequence[str], _raise: Literal[False]) -> Node | None: ...
 
     @overload
-    def get_node(self, path: Iterable[str], _raise: bool = True) -> Node | None: ...
+    def get_node(self, path: Sequence[str], _raise: bool = True) -> Node | None: ...
 
-    def get_node(self, path: Iterable[str], _raise: bool = True) -> Node | None:
+    def get_node(self, path: Sequence[str], _raise: bool = True) -> Node | None:
         if not path:
             return self
 
@@ -447,6 +447,36 @@ class Node:
                 )
             node = node.subnodes[i]
         return node
+
+    @overload
+    def get_typed_node(
+        self, path: Sequence[str], node_type: type[T], _raise: Literal[True] = True
+    ) -> T: ...
+
+    @overload
+    def get_typed_node(
+        self, path: Sequence[str], node_type: type[T], _raise: Literal[False]
+    ) -> T | None: ...
+
+    @overload
+    def get_typed_node(
+        self, path: Sequence[str], node_type: type[T], _raise: bool = True
+    ) -> T | None: ...
+
+    def get_typed_node(
+        self, path: Sequence[str], node_type: type[T], _raise: bool = True
+    ) -> T | None:
+        node = self.get_node(path, _raise=_raise)
+        if isinstance(node, node_type):
+            return node
+
+        if not _raise:
+            return None
+
+        raise LookupError(
+            f'Cannot find node `{path}` in `{self.path}` with type `{node_type}`. '
+            f'Node `{path}` has type {type(node)}.'
+        )
 
     def _definition_dict(self) -> dict[str, Any]:
         return {
